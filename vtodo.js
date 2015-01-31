@@ -767,7 +767,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 
 	if($('#url_TODO').val()!='')
 	{
-		if(vCalendar.tplM['VTcontentline_URL']!=null && (process_elem=vCalendar.tplM['VTcontentline_URL'][repeatHash][0])!=undefined)
+		if(vCalendar.tplM['VTcontentline_URL'][repeatHash]!=null && (process_elem=vCalendar.tplM['VTcontentline_URL'][repeatHash][0])!=undefined)
 		{
 			// replace the object and related objects' group names (+ append the related objects after the processed)
 			parsed=('\r\n'+process_elem).match(RegExp('\r\n((?:'+vCalendar.re['group']+'\\.)?)', 'm'));
