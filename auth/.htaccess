@@ -1,0 +1,9 @@
+<Files ~ "\.inc$">
+	<IfVersion >= 2.3>
+		Require all granted
+	</IfVersion>
+	<IfVersion < 2.3>
+		Order allow,deny
+		Deny from all
+	</IfVersion>
+</Files>
