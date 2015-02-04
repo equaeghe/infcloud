@@ -552,62 +552,102 @@ var globalAppleRemindersMode=true;
 // };
 
 
-// ******* CardDAV (CardDavMATE) related settings ******* //
+/* ******* CardDAV (CardDavMATE) related settings *******                    */
 
-// compatibility settings
-//  anniversaryOutputFormat:
-//  different clients use different (and incompatible) approach to store anniversary date in vCard
-//   Apple stores this attribute as 'itemX.X-ABDATE;TYPE=pref:2000-01-01\r\nitemX.X-ABLabel:_$!<Anniversary>!$_\r\n'
-//   other clients store this attribute as 'X-ANNIVERSARY:2000-01-01\r\n'
-//  choose 'apple' or 'other' (lower case) for your 3rd party client compatibility (you can chose both: ['apple', 'other'] but it can cause many problems in the future, for example: duplicate anniversary dates, invalid/old anniversary date in your clients, and many others ...)
+/*  compatibility settings
+    anniversaryOutputFormat:
+      different clients use different (and incompatible) approach to store
+      anniversary date in vCard
+        Apple stores this attribute as
+          'itemX.X-ABDATE;TYPE=pref:2000-01-01\r\nitemX.X-ABLabel:_$!<Anniversary>!$_\r\n'
+        other clients store this attribute as 'X-ANNIVERSARY:2000-01-01\r\n'
+      choose 'apple' or 'other' (lower case) for your 3rd party client
+      compatibility (you can chose both: ['apple', 'other'] but it can cause
+      many problems in the future, for example: duplicate anniversary dates,
+      invalid/old anniversary date in your clients, and many others ...)     */
 var globalCompatibility={anniversaryOutputFormat: ['apple']};
 
-// set the collection sorting and displaying - set an array of values/variables for each option (see the NOTE below)
-//  possible variables in values: last, middle, first, prefix, suffix
-// NOTE: in globalCollectionDisplay and globalContactStoreFN you also need to define a separator in the array values
-// for example:
-//   the default value is globalCollectionDisplay=['last',' middle',' first'] (space in the second and third elements)
-// if you want comma separator between last, middle and firstname in the interface you should use:
-//   globalCollectionDisplay=['last',', middle',', first'] (comma and space in the second and third elements)
-var globalCollectionSort=['last','middle','first'];		// do not use separators here (use only an array of variables)
+/*  set the collection sorting and displaying - set an array of
+    values/variables for each option (see the NOTE below)
+    possible variables in values: last, middle, first, prefix, suffix
+    NOTE: in globalCollectionDisplay and globalContactStoreFN you also need to
+    define a separator in the array values
+    for example:
+      the default value is globalCollectionDisplay=['last',' middle',' first']
+      (space in the second and third elements)
+    if you want comma separator between last, middle and firstname in the
+    interface you should use:
+      globalCollectionDisplay=['last',', middle',', first']
+      (comma and space in the second and third elements)                     */
+var globalCollectionSort=['last','middle','first'];  // do not use separators here (use only an array of variables)
 var globalCollectionDisplay=['last',' middle',' first'];
 var globalContactStoreFN=['prefix',' last',' middle',' first',' suffix'];
 
-// display "company name" (ORG attribute) for company contacts (true) or use N/FN instead
-//  if undefined or not false, it is enabled by default
+/*  display "company name" (ORG attribute) for company contacts (true) or use
+    N/FN instead
+    if undefined or not false, it is enabled by default                      */
 var globalCollectionDisplayOrg=true;
 
-// group contacts by company name and department (with "Company [Department]" header) instead of simple alphabetical sorting
-//  with one character header
-//  if undefined or not true, alphabetical sorting with one character header is used
+/*  group contacts by company name and department (with "Company [Department]"
+    header) instead of simple alphabetical sorting with one character header
+    if undefined or not true, alphabetical sorting with one character header
+    is used                                                                  */
 var globalGroupContactsByCompanies=false;
 
-// set the URI handlers for EMAIL, TEL, URL and X-SOCIALPROFILE attributes (set to null or comment out to disable)
-var globalUriHandlerTel='tel:';	// if 'tel' is not supported by system/browser, you can use 'callto' or 'skype'
+/*  set the URI handlers for EMAIL, TEL, URL and X-SOCIALPROFILE attributes
+    (set to null or comment out to disable)                                  */
+var globalUriHandlerTel='tel:';  // if 'tel' is not supported by system/browser, you can use 'callto' or 'skype'
 var globalUriHandlerEmail='mailto:';
-var globalUriHandlerUrl='http://';	// the value is used only if no URI handler is defined in the URL
-var globalUriHandlerProfile={'twitter': 'http://twitter.com/%u', 'facebook': 'http://www.facebook.com/%u', 'flickr': 'http://www.flickr.com/photos/%u', 'linkedin': 'http://www.linkedin.com/in/%u', 'myspace': 'http://www.myspace.com/%u', 'sinaweibo': 'http://weibo.com/n/%u'};
+var globalUriHandlerUrl='http://';  // the value is used only if no URI handler is defined in the URL
+var globalUriHandlerProfile={
+  'twitter': 'http://twitter.com/%u',
+  'facebook': 'http://www.facebook.com/%u',
+  'flickr': 'http://www.flickr.com/photos/%u',
+  'linkedin': 'http://www.linkedin.com/in/%u',
+  'myspace': 'http://www.myspace.com/%u',
+  'sinaweibo': 'http://weibo.com/n/%u'
+};
 
-// default country for new address fields (must be defined in addressTypes variable - see common.js)
+/*  default country for new address fields (must be defined in addressTypes
+    variable - see common.js)                                                */
 var globalDefaultAddressCountry='us';
-// if there is no X-ABADR defined for the ADR attribute and the country name not matches any country name defined in the common.js the globalDefaultAddressCountry is used unless you define alternativne country names here
-//  the country must refer to an existing country defined in the common.js and the regex is any regex string which matches the given country (note: regex match is case insensitive)
-var globalAddressCountryEquivalence=[{country: 'de', regex: '^\\W*Deutschland\\W*$'}, {country: 'sk', regex: '^\\W*Slovensko\\W*$'}];
-// countries listed here are shown at the top of the ADR country list (for example: ['de','sk'])
-//  values in the array must refer to an existing country defined in the common.js
+/*  if there is no X-ABADR defined for the ADR attribute and the country name
+    not matches any country name defined in the common.js the 
+    globalDefaultAddressCountry is used unless you define alternativne country
+    names here
+    the country must refer to an existing country defined in the common.js and
+    the regex is any regex string which matches the given country
+    (note: regex match is case insensitive)                                  */
+var globalAddressCountryEquivalence=[
+  {country: 'de', regex: '^\\W*Deutschland\\W*$'},
+  {country: 'sk', regex: '^\\W*Slovensko\\W*$'}
+];
+/*  countries listed here are shown at the top of the ADR country list
+    (for example: ['de','sk'])
+    values in the array must refer to an existing country defined in the
+    common.js                                                                */
 var globalAddressCountryFavorites=[];
 
-// set addressbook to be selected by default after login (URL encoded path to the addressbook, for example: 'USER/addressbook/')
-// if empty or undefined the first available addressbook is selected automatically
+/*  set addressbook to be selected by default after login
+    (URL encoded path to the addressbook, for example: 'USER/addressbook/')
+    if empty or undefined the first available addressbook is selected
+    automatically                                                            */
 //var globalAddressbookSelected='';
 
-// addressbooks stored in this array are checked by default after login (settings stored on server /see settingsAccount/ overwrites this variable)
+/*  addressbooks stored in this array are checked by default after login
+    (settings stored on server /see settingsAccount/ overwrites this
+    variable)                                                                */
 var globalActiveAddressbookCollections=[];
 
-// addressbooks stored in this array are loaded after login (settings stored on server /see settingsAccount/ overwrites this variable)
+/*  addressbooks stored in this array are loaded after login
+    (settings stored on server /see settingsAccount/ overwrites this
+    variable)                                                                */
 var globalLoadedAddressbookCollections=[];
 
-// which namespace is used for storing the "addressbook-color" property by the client
-//  if true undefined (or empty) we use the "http://inf-it.com/ns/ab/" namespace
-//  if false then saving of "addressbook-color" property is disabled and addressbook colors in the interface are generated automatically
+/*  which namespace is used for storing the "addressbook-color" property by the
+    client
+      if true undefined (or empty) we use the "http://inf-it.com/ns/ab/"
+      namespace
+      if false then saving of "addressbook-color" property is disabled and
+      addressbook colors in the interface are generated automatically        */
 //var globalAddrColorPropertyXmlns=true;
