@@ -366,132 +366,190 @@ var globalEnableKbNavigation=true;
 //var globalCrossServerSettingsURL=false;
 
 
-// ******* CalDAV (CalDavZAP) related settings ******* //
+/* ******* CalDAV (CalDavZAP) related settings *******                       */
 
-// number of months pre-loaded from past and future in advance (if null then date range synchronization is disabled)
-// note: interval synchronization is used only if your server supports sync-collection REPORT (e.g. DAViCal)
-// note: if you experience problems with data loading and your server has no time-range filtering support set both variables to null
+/*  number of months pre-loaded from past and future in advance
+    (if null then date range synchronization is disabled)
+    note: interval synchronization is used only if your server supports
+    sync-collection REPORT (e.g. DAViCal)
+    note: if you experience problems with data loading and your server has no
+    time-range filtering support set both variables to null                  */
 var globalEventStartPastLimit=3;
 var globalEventStartFutureLimit=3;
 var globalTodoPastLimit=1;
 
-// default fullcalendar view option (use 'month', 'multiWeek', 'agendaWeek' or 'agendaDay')
-// note: we use custom and enhanced version of fullcalendar!
+/*  default fullcalendar view option (use 'month', 'multiWeek', 'agendaWeek'
+    or 'agendaDay')
+    note: we use custom and enhanced version of fullcalendar!                */
 var globalActiveView='multiWeek';
 
-// open new event form on 'single' or 'double' click (if undefined or not 'double', then 'single' is used)
+/*  open new event form on 'single' or 'double' click (if undefined or not
+    'double', then 'single' is used)                                         */
 var globalOpenFormMode='double';
 
-// set calendar to be selected by default after login (URL encoded path to the calendar, for example: 'USER/calendar/')
-// if empty or undefined the first available calendar is selected automatically
+/*  set calendar to be selected by default after login (URL encoded path to the
+    calendar, for example: 'USER/calendar/')
+    if empty or undefined the first available calendar is selected
+    automatically                                                            */
 //var globalCalendarSelected='';
 
-// set todo calendar to be selected by default after login (URL encoded path to the todo calendar, for example: 'USER/todoCalendar/')
-// if empty or undefined the first available todo calendar is selected automatically
+/*  set todo calendar to be selected by default after login (URL encoded path
+    to the todo calendar, for example: 'USER/todoCalendar/')
+    if empty or undefined the first available todo calendar is selected
+    automatically                                                            */
 //var globalTodoCalendarSelected='';
 
-// calendar collections stored in this array are loaded after login (if empty then all collections are loaded)
-// note: settings stored on server (see settingsAccount) overwrites this variable
+/*  calendar collections stored in this array are loaded after login (if empty
+    then all collections are loaded)
+    note: settings stored on server (see settingsAccount) overwrites this
+    variable                                                                 */
 var globalLoadedCalendarCollections=[];
 
-// todo calendar collections stored in this array are loaded after login  (if empty then all collections are loaded)
-// note: settings stored on server (see settingsAccount) overwrites this variable
+/*  todo calendar collections stored in this array are loaded after login
+    (if empty then all collections are loaded)
+    note: settings stored on server (see settingsAccount) overwrites this
+    variable                                                                 */
 var globalLoadedTodoCollections=[];
 
-// calendar collections stored in this array are checked (visible in the interface) by default after login
-// note: settings stored on server (see settingsAccount) overwrites this variable
+/*  calendar collections stored in this array are checked (visible in the
+    interface) by default after login
+    note: settings stored on server (see settingsAccount) overwrites this
+    variable                                                                 */
 var globalActiveCalendarCollections=[];
 
-// todo calendars collections stored in this array are checked (visible in the interface) by default after login
-// note: settings stored on server (see settingsAccount) overwrites this variable
+/*  todo calendars collections stored in this array are checked (visible in the
+    interface) by default after login
+    note: settings stored on server (see settingsAccount) overwrites this
+    variable                                                                 */
 var globalActiveTodoCollections=[];
 
-// which filters in todo list are selected (filterAction, filterProgress, filterCompleted, filterCanceled)
-// note: filterProgress and filterCanceled are available only if globalAppleRemindersMode is disabled
-// note: settings stored on server (see settingsAccount) overwrites this variable
+/*  which filters in todo list are selected (filterAction, filterProgress, 
+    filterCompleted, filterCanceled)
+    note: filterProgress and filterCanceled are available only if
+    globalAppleRemindersMode is disabled
+    note: settings stored on server (see settingsAccount) overwrites this
+    variable                                                                 */
 var globalTodoListFilterSelected=['filterAction', 'filterProgress'];
 
-// set business hours with 0.5 hour precision - non-business hours will be faded out in the calendar interface
-// if both variables have the same value no fade out occurs
+/*  set business hours with 0.5 hour precision - non-business hours will be
+    faded out in the calendar interface
+    if both variables have the same value no fade out occurs                 */
 var globalCalendarStartOfBusiness=8;
 var globalCalendarEndOfBusiness=17;
 
-// set default duration (in minutes) for newly created events.
-// If undefined or null, globalCalendarEndOfBusiness value will be taken as a default end time instead
+/*  set default duration (in minutes) for newly created events.
+    If undefined or null, globalCalendarEndOfBusiness value will be taken as a
+    default end time instead                                                 */
 var globalDefaultEventDuration=120;
 
-// use 12 hours format (AM/PM) for displaying time?
-// note: time format is now predefined for each localization - use this option only if you want to use custom time format instead of the predefined one
+/*  use 12 hours format (AM/PM) for displaying time?
+    note: time format is now predefined for each localization - use this option
+    only if you want to use custom time format instead of the predefined one */
 //var globalAMPMFormat=false;
 
-// format time information of events shown in month and multiweek views
-// if undefined or null, default value will be used
-// if defined as empty string, no time information will be shown
-// see http://arshaw.com/fullcalendar/docs/utilities/formatDate/ for exact formating rules
+/*  format time information of events shown in month and multiweek views
+      if undefined or null, default value will be used
+      if defined as empty string, no time information will be shown
+    see http://arshaw.com/fullcalendar/docs/utilities/formatDate/ for exact
+    formating rules                                                          */
 //var globalTimeFormatBasic='';
 
-// format time information of events shown in agenda (week and day) views
-// if undefined or null, default value will be used
-// if defined as empty string, no time information will be shown
-// see http://arshaw.com/fullcalendar/docs/utilities/formatDate/ for exact formating rules
+/*  format time information of events shown in agenda (week and day) views
+      if undefined or null, default value will be used
+      if defined as empty string, no time information will be shown
+    see http://arshaw.com/fullcalendar/docs/utilities/formatDate/ for exact
+    formating rules                                                          */
 //var globalTimeFormatAgenda='';
 
-// display hidden (unchecked calendar) events with certain transparency (true) or remove them from the interface completely (false)
+/*  display hidden (unchecked calendar) events with certain transparency (true)
+    or remove them from the interface completely (false)                     */
 var globalDisplayHiddenEvents=false;
 
-// turn on timezone support for "time events", if disabled local time is used
+/*  turn on timezone support for "time events",
+    if disabled local time is used                                           */
 var globalTimeZoneSupport=true;
 
-// set the calendar default timezone
-// see timezones.js or use the following command to get the list of supported timezones defined in timezones.js:
-// grep "'[^']\+': {" timezones.js | sed -Ee "s#(\s*'|':\s*\{)##g"
+/*  set the calendar default timezone
+    see timezones.js or use the following command to get the list of supported
+    timezones defined in timezones.js:
+      grep "'[^']\+': {" timezones.js | sed -Ee "s#(\s*'|':\s*\{)##g"        */
 var globalTimeZone='Europe/Berlin';
 
-// array of enabled timezones, for example: ['America/New_York', 'Europe/Berlin'] (see the comment for the previous configuration option)
-// note: if there is at least one event/todo with a certain timezone defined, that timezone is enabled automatically
+/*  array of enabled timezones, for example:
+      ['America/New_York', 'Europe/Berlin']
+    (see the comment for the previous configuration option)
+    note: if there is at least one event/todo with a certain timezone defined,
+    that timezone is enabled automatically                                   */
 var globalTimeZonesEnabled=[];
 
-// enhance event timezone information using official IANA source (recommended)
+/*  enhance event timezone information using official IANA source
+    (recommended)                                                            */
 var globalRewriteTimezoneComponent=true;
 
-// remove non standard timezone names from events and todos on save action (e.g. /freeassociation.sourceforge.net/Tzfile/Europe/Vienna)
+/*  remove non standard timezone names from events and todos on save action
+    (e.g. /freeassociation.sourceforge.net/Tzfile/Europe/Vienna)             */
 var globalRemoveUnknownTimezone=false;
 
-// show alarms of hidden calendars
-// if this option is enabled and you uncheck a calendar in the calendar list, alarm will be temporary disabled for this calendar
+/*  show alarms of hidden calendars
+    if this option is enabled and you uncheck a calendar in the calendar list,
+    alarm will be temporary disabled for this calendar                       */
 var globalShowHiddenAlarms=false;
 
-// ignore alarms for completed or cancelled todos
+/*  ignore alarms for completed or cancelled todos                           */
 var globalIgnoreCompletedOrCancelledAlarms=true;
 
-// Mozilla automatically treats custom repeating event calculation as if the start day of the week is Monday,
-// despite what day is chosen in the settings. Set this variable to true to use the same approach, ensuring
-// compatible event rendering in special cases
+/*  Mozilla automatically treats custom repeating event calculation as if the
+    start day of the week is Monday, despite what day is chosen in the
+    settings. Set this variable to true to use the same approach, ensuring
+    compatible event rendering in special cases                              */
 var globalMozillaSupport=false;
 
-// which namespace is used for storing the "calendar-color" property by the client
-//  if true undefined (or empty) we use the "http://apple.com/ns/ical/" namespace (Apple compatible)
-//  if false then it is not possible to edit the calendar color in the interface
+/*  which namespace is used for storing the "calendar-color" property by the
+    client
+      if true undefined (or empty) we use the "http://apple.com/ns/ical/"
+      namespace (Apple compatible)
+      if false then it is not possible to edit the calendar color in the
+      interface                                                              */
 //var globalCalendarColorPropertyXmlns=true;
 
-// set what days of the week are considered weekend days; non-weekend days are automatically considered to be business days
-// Sunday is 0, Monday is 1, etc.
+/*  set what days of the week are considered weekend days; non-weekend days are
+    automatically considered to be business days
+      Sunday is 0, Monday is 1, etc.                                         */
 var globalWeekendDays=[0, 6];
 
-// STRONGLY recommended if you use any Apple clients for todos (has no effect on events).
-// Accepted values are currently 'iOS6', 'iOS7', true (support of the latest iOS version - 'iOS7') and false.
-// If enabled:
-//  - RFC todo support is SEVERELY limited and the client mimics the behaviour of Apple Reminders.app (to ensure maximum compatibility)
-//  - when a single instance of repeating todo is edited, it becomes an autonomous non-repeating todo with NO relation to the original repeating todo
-//  - capabilities of repeating todos are limited - only the first instance is ever visible
-//  - support for todo DTSTART attribute is disabled
-//  - support for todo STATUS attribute other than COMPLETED and NEEDS-ACTION is disabled
-//  - [iOS6 only] support for LOCATION and URL attributes is disabled
+/*  STRONGLY recommended if you use any Apple clients for todos
+    (has no effect on events).
+    Accepted values are currently 'iOS6', 'iOS7', true (support of the latest
+    iOS version - 'iOS7') and false.
+    If enabled:
+      - RFC todo support is SEVERELY limited and the client mimics the
+        behaviour of Apple Reminders.app (to ensure maximum compatibility)
+      - when a single instance of repeating todo is edited, it becomes an
+        autonomous non-repeating todo with NO relation to the original
+        repeating todo
+      - capabilities of repeating todos are limited - only the first instance
+        is ever visible
+      - support for todo DTSTART attribute is disabled
+      - support for todo STATUS attribute other than COMPLETED and NEEDS-ACTION
+        is disabled
+      - [iOS6 only] support for LOCATION and URL attributes is disabled      */
 var globalAppleRemindersMode=true;
 
-// NOTE: subsribed calendars are NOT "shared" calendars ... for "shared" calendars see the delegation option in globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings
-// array of subscribed (read-only) calendars; each calendar is identified by an url address (for example: http://something.com/calendar.ics)
-//var globalSubscribedCalendars={hrefLabel: 'Subscribed', calendars: [{displayName: 'Subscribed Calendar', href: 'http://something.com/calendar.ics', userAuth: {userName: '', userPassword: ''}, ignoreAlarm: true, color: '#ff0000', typeList: ['vevent','vtodo']}]};
+/*  NOTE: subsribed calendars are NOT "shared" calendars ... for "shared"
+    calendars see the delegation option in globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings
+    array of subscribed (read-only) calendars; each calendar is identified by
+    an url address (for example: http://something.com/calendar.ics)          */
+// var globalSubscribedCalendars={
+//   hrefLabel: 'Subscribed',
+//   calendars: [{
+//     displayName: 'Subscribed Calendar',
+//     href: 'http://something.com/calendar.ics',
+//     userAuth: {userName: '', userPassword: ''},
+//     ignoreAlarm: true,
+//     color: '#ff0000',
+//     typeList: ['vevent','vtodo']
+//   }]
+// };
 
 
 // ******* CardDAV (CardDavMATE) related settings ******* //
