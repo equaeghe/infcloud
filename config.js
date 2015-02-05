@@ -423,7 +423,7 @@ var globalActiveCalendarCollections=[];
     variable                                                                 */
 var globalActiveTodoCollections=[];
 
-/*  which filters in todo list are selected (filterAction, filterProgress, 
+/*  which filters in todo list are selected (filterAction, filterProgress,
     filterCompleted, filterCanceled)
     note: filterProgress and filterCanceled are available only if
     globalAppleRemindersMode is disabled
@@ -536,9 +536,10 @@ var globalWeekendDays=[0, 6];
 var globalAppleRemindersMode=true;
 
 /*  NOTE: subsribed calendars are NOT "shared" calendars ... for "shared"
-    calendars see the delegation option in globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings
-    array of subscribed (read-only) calendars; each calendar is identified by
-    an url address (for example: http://something.com/calendar.ics)          */
+    calendars see the delegation option in globalAccountSettings,
+    globalNetworkCheckSettings and globalNetworkAccountSettings array of
+    subscribed (read-only) calendars; each calendar is identified by an url
+    address (for example: http://something.com/calendar.ics)                 */
 // var globalSubscribedCalendars={
 //   hrefLabel: 'Subscribed',
 //   calendars: [{
@@ -612,7 +613,7 @@ var globalUriHandlerProfile={
     variable - see common.js)                                                */
 var globalDefaultAddressCountry='us';
 /*  if there is no X-ABADR defined for the ADR attribute and the country name
-    not matches any country name defined in the common.js the 
+    not matches any country name defined in the common.js the
     globalDefaultAddressCountry is used unless you define alternativne country
     names here
     the country must refer to an existing country defined in the common.js and
