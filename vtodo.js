@@ -483,11 +483,11 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 		vCalendar.tplM['VTunprocessed'][repeatHash]=new Array();
 		// vCalendar END (required by RFC)
 
-		if(vCalendar.tplM['end'][repeatHash]!=null && (process_elem=vCalendar.tplM['end'][repeatHash][0])!=undefined)
-			vCalendarText+=vCalendar.tplM['end'][repeatHash][0];
+		if(vCalendar.tplM['VTend'][repeatHash]!=null && (process_elem=vCalendar.tplM['VTend'][repeatHash][0])!=undefined)
+			vCalendarText+=vCalendar.tplM['VTend'][repeatHash][0];
 		else
 		{
-			process_elem=vCalendar.tplC['end'];
+			process_elem=vCalendar.tplC['VTend'];
 			process_elem=process_elem.replace('##:::##group_wd##:::##', '');
 			vCalendarText+=process_elem;
 		}
@@ -533,7 +533,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 		if(vCalendarText.lastIndexOf('\r\n')!=(vCalendarText.length-2))
 			vCalendarText+='\r\n';
 
-		if(globalSettings.rewritetimezonecomponent.value || !vCalendar.tplM['unprocessedVTIMEZONE'][repeatHash])
+		if(globalSettings.rewritetimezonecomponent.value || !vCalendar.tplM['VTunprocessedVTIMEZONE'][repeatHash])
 		{
 			if(tzArray.indexOf(sel_option)==-1)
 				vCalendarText+= buildTimezoneComponent(sel_option);

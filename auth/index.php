@@ -27,6 +27,7 @@ HTML;
 	else
 	{
 		header('Content-type: text/xml; charset="utf-8"');
+		header('Cache-Control: max-age=0, must-revalidate, no-cache, no-store, no-transform, private');
 		echo array_to_xml($config['accounts']);
 	}
 ?>

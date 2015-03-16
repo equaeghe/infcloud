@@ -177,7 +177,7 @@ var globalActiveApp='';
 var globalAvailableAppsArray=new Array();
 var globalEnableAppSwitch=true;
 var globalAppName='InfCloud';
-var globalVersion='0.12.0';
+var globalVersion='0.12.1';
 var globalXMLCache=null;
 var globalVersionCheckURL=(location.protocol=='file:' ? 'http:' : location.protocol)+'//www.inf-it.com/versioncheck/'+globalAppName+'/?v='+globalVersion;
 var globalXClientHeader=globalAppName+' '+globalVersion+' (Inf-IT CalDAV/CardDAV Web Client)';
@@ -307,7 +307,7 @@ function reloadResources(dontSaveSettings, loadArray)
 			if(isAvaible('CalDavZAP'))
 				$('.date').datepicker('refresh');
 			if(isAvaible('CardDavMATE'))
-				$('#vCardEditor').find('[data-type^="date_"]').datepicker('refresh');
+				$('#vCardEditor').find('input[data-type^="date_"]').datepicker('refresh');
 			if(isAvaible('Projects'))
 				$('.project_date').datepicker('refresh');
 			$('#calendar').fullCalendar('updateToday');
@@ -497,12 +497,13 @@ function loadNextApplication(forceLoad)
 	{
 		$('#MainLoaderInner').html('Loading Reports');
 		globalReportsSync=true;
-//		if(typeof globalCRMSettings != 'undefined')
-//			netLoadXSLT(globalCRMSettings.XSLTHref);
-//		else
-//		{
-			netLoadReportList();
-//		}
+		if(typeof globalCRMSettings != 'undefined')
+			netLoadReportList(globalCRMSettings);
+		else
+		{
+			console.log("Error: globalCRMSettings is not defined");
+			loadNextApplication(false);
+		}
 	}
 	else if(isAvaible('Settings') && !globalSettingsSync && !isSettingsLoaded && getLoggedUser()!=null)
 	{
@@ -637,6 +638,11 @@ function logout(forceLogout)
 		{
 			logoutProjects();
 			isProjectsLoaded = false;
+		}
+		if(typeof isReportsLoaded!='undefined' && isReportsLoaded)
+		{
+			logoutReports();
+			isReportsLoaded = false;
 		}
 		if(typeof isSettingsLoaded!='undefined' && isSettingsLoaded)
 		{

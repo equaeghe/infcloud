@@ -952,6 +952,7 @@ table.fc-border-separate {
 
 .fc-view-table td.fc-event-title,
 .fc-view-todo td.fc-event-title,
+.fc-view-todo td.fc-event-time,
 .fc-view-todo td.fc-event-location {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -983,7 +984,7 @@ table.fc-border-separate {
 }
 
 .fc-view-todo col.fc-event-location {
-	width: 165px;
+	width: 150px;
 }
 
 .fc-event-title {
@@ -1001,6 +1002,11 @@ table.fc-border-separate {
 .fc-view-todo td.fc-event-percent {
 	text-align: right;
 	padding-right: 4px !important;
+}
+
+.fc-view-todo col.fc-hidden-empty,
+.fc-view-todo col.fc-hidden-width {
+	width: 0;
 }
 
 .fc-view-table .fc-table-dateinfo,

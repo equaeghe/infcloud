@@ -1486,6 +1486,12 @@ function netLoadResource(inputResource, inputHref, hrefMode, inputResourceIndex,
 
 						var read_only=false;
 						var href=$(element).children().filterNsNode('href').text();
+						if(href.match(RegExp('^https?://','i'))!=null)
+						{
+							var tmpH = href.match(RegExp('^(https?://)([^/]+)(.*)','i'))
+							if(tmpH!=null)
+								href = tmpH[3];
+						}
 
 						if(permissions.length>0 && permissions.indexOf('all')==-1 && permissions.indexOf('write')==-1 && permissions.indexOf('write-content')==-1)
 							read_only=true;
@@ -1706,6 +1712,12 @@ function netLoadResource(inputResource, inputHref, hrefMode, inputResourceIndex,
 								disableLocking=true;
 
 							var href=$(element).children().filterNsNode('href').text();
+							if(href.match(RegExp('^https?://','i'))!=null)
+							{
+								var tmpH = href.match(RegExp('^(https?://)([^/]+)(.*)','i'))
+								if(tmpH!=null)
+									href = tmpH[3];
+							}
 							var tmp_cn=href.match(RegExp('/([^/]+)/?$'));	// collection name
 
 							var read_only=false;
@@ -2403,7 +2415,12 @@ function putVcalendarToCollection(accountUID, inputUID, inputEtag, inputVcalenda
 				globalRevertFunction=null
 			}
 			else if(inputForm=='vtodo')
+			{
 				globalTodoLoaderHide='';
+				if(isFormHidden)
+					$('#todoList').fullCalendar('allowSelectEvent',true);
+			}
+			
 			return false;
 		},
 		success: function(data, textStatus, xml){
@@ -2458,9 +2475,10 @@ function putVcalendarToCollection(accountUID, inputUID, inputEtag, inputVcalenda
 					});
 				}
 			}
+
 			if(newEtag!=null)
 			{
-				rid=inputUID.substring(0, inputUID.lastIndexOf('/')+1);
+				var rid=inputUID.substring(0, inputUID.lastIndexOf('/')+1);
 				if(inputForm=='vevent')
 				{
 					var resources=globalResourceCalDAVList.collections;
@@ -2491,12 +2509,10 @@ function putVcalendarToCollection(accountUID, inputUID, inputEtag, inputVcalenda
 							if(inputForm=='vtodo'&&isFormHidden!=true)
 								$('#showTODO').val(inputUID);
 							globalEventList.insertEvent(true, resources[j], {isRepeat: false, isTODO: false, untilDate: '', sortStart: '', start: '', end: '', sortkey: '', timestamp: resultTimestamp, accountUID: resources[j].accountUID, uid: inputUID, displayValue: resources[j].displayvalue, etag: newEtag, vcalendar: vcalendar_clean}, true, false,false);
-							if(inputEtag=='') {
-								if(isFormHidden)
-									$('#todoList').fullCalendar('allowSelectEvent',true);
-								else
-									$('#todoList').fullCalendar('selectEvent',$('[data-id="'+inputUID+'"]'));
-							}
+							if(isFormHidden)
+								$('#todoList').fullCalendar('allowSelectEvent',true);
+							if(inputEtag=='' || isFormHidden)
+								$('#todoList').fullCalendar('selectEvent',$('[data-id="'+inputUID+'"]'));
 							break;
 						}
 					}
@@ -2508,6 +2524,8 @@ function putVcalendarToCollection(accountUID, inputUID, inputEtag, inputVcalenda
 					netLoadCalendar(globalResourceCalDAVList.getEventCollectionByUID(collection_uid), [{etag: '', href: put_href_part}], (collection.forceSyncPROPFIND==undefined || collection.forceSyncPROPFIND==false ? true : false), false, true,false, true, null, null);
 				else
 				{
+					if(isFormHidden)
+						$('#todoList').fullCalendar('allowSelectEvent',true);
 					if(inputForm=='vtodo'&&isFormHidden!=true)
 						$('#showTODO').val(inputUID);
 					netLoadCalendar(globalResourceCalDAVList.getTodoCollectionByUID(collection_uid), [{etag: '', href: put_href_part}], (collection.forceSyncPROPFIND==undefined || collection.forceSyncPROPFIND==false ? true : false), false, true,false, true, null, null);
