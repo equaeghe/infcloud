@@ -4,7 +4,18 @@ CalDavZAP Changelog
 NOTE: if you are interested in integrated version of CalDavZAP and CardDavMATE (our CardDAV web client) please use InfCloud - http://www.inf-it.com/open-source/clients/infcloud/
 
 
+version 0.12.1 [2015-03-16]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: you NEED to enable "mod_headers" in Apache (for other servers see your server documentation) which is used to generate proper HTTP headers (required for correct support of HTML5 cache in browsers); the previously used mod_expire is not longer used (see the changelog entry below)
+- added support for absolute collection URLs returned in PROPFIND request
+- fixed HTML5 cache related problems (especially in Firefox) by returning "Cache-Control: max-age=0, must-revalidate, no-cache, no-transform, private" header instead of "Cache-Control: max-age=0" - this fix requires enabled "mod_headers" (you can disable the previously used "mod_expires") in Apache - for more details see .htaccess
+- fixed processing of the language parameter in the title of event/todo
+- changed displaying of event/todo calendar list in event/todo form - now it is possible to create new event/todo also into inactive event/todo collection
+- updated jQuery-UI to 1.11.4
+- other improvements and fixes
+
 version 0.12.0 [2015-01-26]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
 - configuration - added globalDefaultEventDuration configuration variable - set the default duration (in minutes) for newly created events
 - added widened todo list with dynamic number of columns
 - added checkboxes for todos in the todo list - now you can change the status of a todo by clicking on its checkbox
@@ -15,6 +26,7 @@ version 0.12.0 [2015-01-26]:
 - other improvements and fixes
 
 version 0.11.1 [2014-10-07]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
 - updated timezone.js to latest IANA timezone database
 - updated jQuery to 2.1.1
 - updated jQuery-UI to 1.11.1

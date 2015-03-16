@@ -7967,9 +7967,13 @@ function vcardToData(inputContact, inputIsReadonly, inputIsCompany, inputEditorM
 		// Unprocessed unrelated vCard elements
 		vCard.tplM['unprocessed_unrelated']=vcard;
 
-console.timeEnd('vcardToData timer');
-//		if(vcard!='\r\n')
-//			console.log('Warning: [vCard unprocessed unrelated]: '+vcard);
+		if(typeof globalDebug!='undefined' && globalDebug instanceof Array && globalDebug.indexOf('vcard')!=-1)
+		{
+			console.timeEnd('vcardToData timer');
+
+			if(vcard!='\r\n')
+				console.log('Warning: [vCard unprocessed unrelated]: '+vcard);
+		}
 
 		//clean error message
 		$('#ABMessage').height('0');

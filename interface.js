@@ -3221,7 +3221,6 @@ function initFullCalendar()
 
 function todoCheckClick(status, percent, calTodo)
 {
-	fullVcalendarToTodoData(calTodo,false);
 	var id=calTodo.repeatHash;
 	if(typeof globalTodolistStatusArray[id]!='undefined' && typeof globalTodolistStatusArray[id].timeout!='undefined')
 		clearTimeout(globalTodolistStatusArray[id].timeout);
@@ -3231,6 +3230,8 @@ function todoCheckClick(status, percent, calTodo)
 	globalTodolistStatusArray[id].timeout = setTimeout(function(){
 		if(typeof globalTodolistStatusArray[id]!='undefined')
 		{
+			$('#todoList').fullCalendar('allowSelectEvent',false);
+			fullVcalendarToTodoData(calTodo,false);
 			if(percent=='50' && typeof globalTodolistStatusArray[id].percent!='undefined')
 				percent=globalTodolistStatusArray[id].percent;
 
@@ -3739,8 +3740,13 @@ function initTodoList()
 		defaultView: 'todo',
 		editable: true,
 		todoColThresholds: [
-			{'width':635, 'col':'priority'},
-			{'width':850, 'col':'location'}
+			{'col':'priority', 'width':552},
+			{'col':'location', 'width':702}
+		],
+		todoOptionalCols: [
+			{'col':'time', 'width':142},
+			{'col':'priority', 'width':18},
+			{'col':'location', 'width':150}
 		],
 		selectEmpty: function(){
 			if($('#todoInEdit').val()!=='true') {
@@ -3815,7 +3821,6 @@ function initTodoList()
 				status = 'COMPLETED';
 			}
 
-			$('#todoList').fullCalendar('allowSelectEvent',false);
 			todoCheckClick(status, percent, calTodo);
 		},
 		eventAfterRender: function(event, element, view){
@@ -5330,10 +5335,10 @@ function showEventPopup(e, event)
 	}
 
 	switch(event.avail){
-		case 'busy':
+		case 'OPAQUE':
 			avail = localization[globalInterfaceLanguage].eventAvailabilityBusy;
 			break;
-		case 'free':
+		case 'TRANSPARENT':
 			avail = localization[globalInterfaceLanguage].eventAvailabilityFree;
 			break;
 		default:
@@ -5342,13 +5347,13 @@ function showEventPopup(e, event)
 	}
 
 	switch(event.classType){
-		case 'public':
+		case 'PUBLIC':
 			classType = localization[globalInterfaceLanguage].eventTypePublic;
 			break;
-		case 'confidential':
+		case 'CONFIDENTIAL':
 			classType = localization[globalInterfaceLanguage].eventTypeConfidential;
 			break;
-		case 'private':
+		case 'PRIVATE':
 			classType = localization[globalInterfaceLanguage].eventTypePrivate;
 			break;
 		default:
@@ -6026,7 +6031,7 @@ function processEditorElements(inputEditorRef, processingType, inputIsReadonly, 
 		}
 	);
 
-	tmp_ref.find('[data-type^="date_"]').prop('disabled', disabled || readonly);
+	tmp_ref.find('input[data-type^="date_"]').prop('disabled', disabled || readonly);
 
 	// family name, given name, and organization name
 	var typeList=['family', 'given', 'middle', 'nickname', 'prefix', 'suffix', 'ph_firstname', 'ph_lastname', 'date_bday', 'tags', 'title', 'department', 'org'];
@@ -6333,7 +6338,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 	});
 
 	// initialize datepicker
-	globalRefVcardEditor.find('[data-type^="date_"]').focus(function(){initDatePicker($(this));});
+	globalRefVcardEditor.find('input[data-type^="date_"]').focus(function(){initDatePicker($(this));});
 
 	/*************************** BAD HACKS SECTION ***************************/
 	if($.browser.msie && parseInt($.browser.version, 10)==10)	/* IE 10 (because there are no more conditional comments) */
