@@ -115,7 +115,7 @@
 	left: 529px;
 }
 
-.filters_d, .statistics_d, #FilterList, #ProjectsData, #SystemProjectsLock, #ProjectListDisabler
+.filters_d, .statistics_d, #FilterList, #ProjectsData, #SystemProjectsLock, #SystemReportsLock, #ProjectListDisabler
 {
 	left: 50px;
 }
@@ -145,7 +145,7 @@
 	left: 50px;
 }
 
-.report_filters_d, #ReportFilters
+.report_filters_d, #ReportFilterList
 {
 	left: 275px;
 }

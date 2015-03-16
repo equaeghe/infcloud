@@ -140,7 +140,7 @@ function showTimezones(selTimezone, todoSelector)
 
 	var select=$('#timezone'+todoSelector);
 	select.empty();
-
+	var isFirst=false;
 	for(var izone in timezoneKeys)
 	{
 		if(timeZonesEnabled.indexOf(timezoneKeys[izone])==-1)
@@ -148,16 +148,11 @@ function showTimezones(selTimezone, todoSelector)
 		if(!isNaN(izone))
 		{
 			var tmp=null;
-			tmp=$('<option>');
-			tmp.attr('data-type',timezoneKeys[izone]);
-			if(izone==0)
+			if(!isFirst)
 			{
-				tmp.text(localization[globalInterfaceLanguage].localTime);
-				tmp.attr('value','local');
-//				if((todoSelector=='PickerTODO' || todoSelector=='Picker') && typeof globalSettings.timezone.value != 'undefined' && globalSettings.timezone.value != null)
-//					tmp.attr('value',globalSettings.timezone.value);
-				select.append(tmp);
-
+				tmp=$('<option>');
+				tmp.attr('data-type','local');
+				isFirst=true;
 				if(!(selTimezone in timezones) && selTimezone!= '' && selTimezone!= 'local' && (globalSettings.removeunknowntimezone.value == null || !globalSettings.removeunknowntimezone.value))
 				{
 					tmp.text(localization[globalInterfaceLanguage].customTimezone);
@@ -166,6 +161,14 @@ function showTimezones(selTimezone, todoSelector)
 						tmp.attr('value',globalSettings.timezone.value);
 					select.append(tmp);
 				}
+			}
+			tmp=$('<option>');
+			tmp.attr('data-type',timezoneKeys[izone]);
+			if(izone==0)
+			{
+				tmp.text(localization[globalInterfaceLanguage].localTime);
+				tmp.attr('value','local');
+				select.append(tmp);
 			}
 			else
 			{
@@ -339,7 +342,7 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 	var calSelected = $('.resourceCalDAVTODO_item.resourceCalDAV_item_selected').attr('data-id');
 	for(var i=0;i<cals.length;i++)
 	{
-		if( cals[i].uid!=undefined && ((todo!=null && todo.res_id==cals[i].uid) || (cals[i].makeLoaded && !cals[i].permissions_read_only && (globalVisibleCalDAVTODOCollections.indexOf(cals[i].uid)!=-1 || calSelected==cals[i].uid))))
+		if( cals[i].uid!=undefined && ((todo!=null && todo.res_id==cals[i].uid) || (cals[i].makeLoaded && !cals[i].permissions_read_only)))
 		{
 			todoCalendarObj.append(new Option(cals[i].displayValue,cals[i].uid));
 		}
@@ -947,9 +950,10 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 
 	if(mod=='show')
 	{
-		if($('#ResourceCalDAVList').find('[data-id="'+todo.res_id+'"]').hasClass("resourceCalDAV_item_ro"))
+		if($('#ResourceCalDAVTODOList').find('[data-id="'+todo.res_id+'"]').hasClass("resourceCalDAV_item_ro"))
 		{
 			$('#editTODO').hide();
+			$('#duplicateTODO').hide();
 			$('#editOptionsButtonTODO').hide();
 		}
 
@@ -1658,7 +1662,7 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 	var calSelected = $('.resourceCalDAV_item.resourceCalDAV_item_selected').attr('data-id');
 		for(var i=0;i<cals.length;i++)
 		{
-			if(cals[i].uid!=undefined && ((calEvent!=null && calEvent.res_id==cals[i].uid) || (cals[i].makeLoaded && !cals[i].permissions_read_only && (globalVisibleCalDAVCollections.indexOf(cals[i].uid)!=-1 || calSelected==cals[i].uid))))
+			if(cals[i].uid!=undefined && ((calEvent!=null && calEvent.res_id==cals[i].uid) || (cals[i].makeLoaded && !cals[i].permissions_read_only )))
 			{
 				calendarObj.append(new Option(cals[i].displayValue,cals[i].uid));
 			}
@@ -2305,6 +2309,7 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 		if($('#ResourceCalDAVList').find('[data-id="'+calEvent.res_id+'"]').hasClass("resourceCalDAV_item_ro"))
 		{
 			$('#editButton').hide();
+			$('#duplicateButton').hide();
 			$('#editOptionsButton').hide();
 		}
 		$('#eventDetailsTable :input[type!="button"]').prop('disabled', true);
