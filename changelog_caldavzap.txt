@@ -3,6 +3,29 @@ CalDavZAP Changelog
 
 NOTE: if you are interested in integrated version of CalDavZAP and CardDavMATE (our CardDAV web client) please use InfCloud - http://www.inf-it.com/open-source/clients/infcloud/
 
+version 0.13.0 [2015-09-16]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: if you use a server with cross-domain setup see the modified Access-Control-Allow-Headers and Access-Control-Expose-Headers in readme.txt (or misc/config_davical.txt or misc/calendarserver.diff); you MUST update these headers, otherwise the client will NOT work
+- configuration - added globalEnableRefresh option which enables/disables the new "refresh all resources" icon in the left application menu (disabled by default)
+- added Chinese localization (zh_CN) - thanks Fandy
+- added shift+login shortcut to ignore settings stored on the server and use the default settings (this functionality was added long time ago, but I forgot to mention about it)
+- added support for "Prefer: return=representation" (and related "Preference-Applied: return=representation") for PUT requests (see http://tools.ietf.org/html/rfc7240); this change REQUIRES update of Access-Control-Allow-Headers and Access-Control-Expose-Headers if cross-domain setup is used
+- added full RFC2445 support - RRULE processing is now performed by rrule.js (see: https://github.com/jakubroztocil/rrule); thanks to this library we now support/expand all recurrences, although the most exotic ones are "read-only" (for these you will see "Other (modification not supported)" in the interface)
+- added DESCRIPTION property for VALARM components to make them RFC compliant
+- added check for unsupported XML 1.0 characters in user entered data - these are replaced by a space character (to prevent client and/or server side parsing errors)
+- added title with version number for the software name/description (login screen)
+- added vCalendar line folding (RFC2445 - section 4.1)
+- fixed event processing when multiple VEVENT and VTIMEZONE components are intermingled
+- fixed VTODO COMPLETED property (UTC time format)
+- fixed alarm window not being localized properly
+- fixed an occasional issue where all collections are double loaded on login
+- changed version checking - use internal build number for software version comparison to support update notification also for beta and rc builds
+- changed format and comments in config.js
+- changed storing of user settings (PROPPATCH request) - no server request will be made if there is no change in settings
+- updated jQuery to 2.1.4
+- updated localizations - thanks Niels Bo Andersen [da_DK], Marten Gajda [de_DE], Damian Vila [es_ES], Gabriela Vattier [fr_FR], Luca Ferrario [it_IT], Muimu Nakayama [ja_JP], Johan Vromans [nl_NL], Selcuk Pultar [tr_TR], Александр Симонов [ru_RU], Serge Yakimchuck [uk_UA]
+- updated timezone.js to latest IANA timezone database
+- other improvements and fixes
 
 version 0.12.1 [2015-03-16]:
 - note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)

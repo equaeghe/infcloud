@@ -131,7 +131,7 @@ function show_editor_loader_messageCalendar(inputForm, inputSetClass, inputMessa
 
 }
 
-function items(etag, from, end, title, isall, uid, rid, ev_id, note, displayValue, alertTime, alertNote, untilDate, type, interval, after, repeatStart, repeatEnd, byMonthDay, repeatCount, realRepeatCount, vcalendar, location, alertTimeOut, timeZone, realStart ,realEnd, byDay, rec_id, wkst, classType, avail, hrefUrl,compareString,priority,status)
+function items(etag, from, end, title, isall, uid, rid, ev_id, note, displayValue, alertTime, alertNote, untilDate, type, interval, after, repeatStart, repeatEnd, byMonthDay, repeatCount, realRepeatCount, vcalendar, location, alertTimeOut, timeZone, realStart ,realEnd, byDay, rec_id, wkst, classType, avail, hrefUrl,compareString,priority,status,ruleString)
 {
 	this.etag=etag;
 	this.id=uid;
@@ -170,9 +170,10 @@ function items(etag, from, end, title, isall, uid, rid, ev_id, note, displayValu
 	this.priority=priority;
 	this.status=status;
 	this.searchvalue=title.toLowerCase().replace(vCalendar.pre['compressNewLineRex']).multiReplace(globalSearchTransformAlphabet);
+	this.ruleString=ruleString;
 }
 
-function todoItems(from, to, untilDate, type, interval, after, wkst, repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location, note, title, uid, vcalendar, etag, alertTime, alertNote, status, filterStatus,  rec_id, repeatHash,  percent, displayValue, res_id, compareString, timeZone, realStart, realEnd, alertTimeOut,classType, url, completedOn, sequence,priority,renderPriority, finalString)
+function todoItems(from, to, untilDate, type, interval, after, wkst, repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location, note, title, uid, vcalendar, etag, alertTime, alertNote, status, filterStatus,  rec_id, repeatHash,  percent, displayValue, res_id, compareString, timeZone, realStart, realEnd, alertTimeOut,classType, url, completedOn, sequence,priority,renderPriority, finalString,ruleString)
 {
 	this.start=from;
 	this.end=to;
@@ -214,6 +215,7 @@ function todoItems(from, to, untilDate, type, interval, after, wkst, repeatStart
 	this.renderPriority=renderPriority;
 	this.finalString=finalString;
 	this.searchvalue=title.toLowerCase().replace(vCalendar.pre['compressNewLineRex']).multiReplace(globalSearchTransformAlphabet);
+	this.ruleString=ruleString;
 }
 
 function setLoadingLimit(forceLoad, allSyncMode)
@@ -305,7 +307,7 @@ function checkEventLoader(inputCounter, needRefresh)
 					updateMainLoader(needRefresh,inputCounter.listType,inputCounter.uid);
 			}
 		}
-		else if(globalOnlyCalendarNumberCount==globalOnlyCalendarNumber || globalOnlyTodoCalendarNumberCount==globalTodoCalendarNumber)
+		else if((globalOnlyCalendarNumber>0 && globalOnlyCalendarNumberCount==globalOnlyCalendarNumber) || (globalTodoCalendarNumber>0 && globalOnlyTodoCalendarNumberCount==globalTodoCalendarNumber))
 			updateMainLoader(needRefresh,inputCounter.listType,inputCounter.uid);
 	}
 }
@@ -712,863 +714,359 @@ function getValidRepeatDay(inputDate, RepeatDay)
 		return dayOfMonth;
 }
 
+function generateRepeatInstances(inputObj)
+{
+	var dayDifference=inputObj.items.end.getTime()-inputObj.items.start.getTime();
+	var alertTimeOut=new Array();
+	var lastGenDate= inputObj.repeatStart;
+	var rule=null;
+	if(typeof inputObj.rule == 'undefined')
+	{
+		var options = RRule.parseString(inputObj.items.ruleString);
+		options.dtstart = new Date(inputObj.items.start.getTime());
+		if(inputObj.untilDate!=='')
+			options.until = inputObj.untilDate;
+		rule = new RRule(options);
+	}
+	else
+		rule=inputObj.rule;
+
+	rule.between(inputObj.repeatStart, inputObj.futureRLimit, true, function(date,i){
+		var varDate=new Date(date.getTime());
+
+		var varEndDate=new Date(date.getTime()+dayDifference);
+		var checkRec=false, valOffsetFrom='', intOffset='';
+
+		inputObj.items.realRepeatCount++;
+
+		if(inputObj.recurrence_id_array.length>0)
+			checkRec=isInRecurrenceArray(varDate,inputObj.stringUID,inputObj.recurrence_id_array, inputObj.tzName);
+		if(!inputObj.items.allDay)
+		{
+			var dateStart,dateEnd;
+			if(globalSettings.timezonesupport.value && inputObj.items.timeZone in timezones)
+				valOffsetFrom=getOffsetByTZ(inputObj.items.timeZone, varDate);
+			var realStart=new Date(varDate.getTime());
+			dateStart=new Date(realStart.getTime());
+			if(valOffsetFrom)
+			{
+				intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
+				dateStart.setTime(dateStart.getTime()+intOffset);
+			}
+			if(inputObj.exDates.length>0)
+				if(inputObj.exDates.indexOf(dateStart.toString())!=-1)
+					checkRec=true;
+
+			var realEnd=new Date(varEndDate.getTime());
+			dateEnd=new Date(realEnd.getTime());
+			if(intOffset)
+				dateEnd.setTime(dateEnd.getTime()+intOffset);
+		}
+		else
+		{
+			realStart=new Date(varDate.getTime());
+			if(inputObj.exDates.length>0)
+				if(inputObj.exDates.indexOf(realStart.toString())!=-1)
+					checkRec=true;
+			dateStart=$.fullCalendar.formatDate(realStart,"yyyy-MM-dd'T'HH:mm:ss");
+			realEnd=new Date(varEndDate.getTime());
+			dateEnd =$.fullCalendar.formatDate(realEnd,"yyyy-MM-dd'T'HH:mm:ss");
+		}
+
+		var checkDateTime = new Date(inputObj.repeatStart.getTime());
+		if(typeof dateStart=='string')
+			checkDateTime=$.fullCalendar.formatDate(inputObj.repeatStart,"yyyy-MM-dd'T'HH:mm:ss");
+		if((inputObj.items.after!=='' && inputObj.items.realRepeatCount>(parseInt(inputObj.items.after,10))) || (typeof dateStart=='object' && (checkDateTime-dateStart)==0) || (typeof dateStart=='string' && checkDateTime==dateStart))
+		{
+			checkRec=true;
+			inputObj.items.realRepeatCount--;
+		}
+
+		if(!checkRec)
+		{
+			if(!inputObj.ignoreAlarms)
+				alertTimeOut=setAlertTimeouts(false,inputObj.alertTime, dateStart, dateEnd, {allDay:inputObj.items.allDay, title:inputObj.items.title},false, inputObj.items.id);
+			inputObj.items.repeatCount++;
+			var tmpObj=$.extend({},inputObj.items,{
+				start:dateStart,
+				end:dateEnd,
+				realStart:realStart,
+				realEnd:realEnd,
+				repeatCount:inputObj.items.repeatCount,
+				realRepeatCount:inputObj.items.realRepeatCount,
+				alertTimeOut:alertTimeOut
+				});
+			globalEventList.displayEventsArray[inputObj.items.res_id].splice(globalEventList.displayEventsArray[inputObj.items.res_id].length, 0, tmpObj);
+			lastGenDate = new Date(varDate.getTime());
+		}
+		return true;
+	});
+
+
+	if(typeof globalEventList.repeatable[inputObj.items.id] == 'undefined')
+		globalEventList.repeatable[inputObj.items.id]={
+			lastGenDate:lastGenDate,
+			recurrence_id_array:inputObj.recurrence_id_array,
+			stringUID:inputObj.stringUID,
+			exDates:inputObj.exDates,
+			alertTime:inputObj.alertTime,
+			ignoreAlarms:inputObj.ignoreAlarms,
+			rule:rule,
+			items:inputObj.items
+		};
+	else
+		globalEventList.repeatable[inputObj.items.id].lastGenDate=lastGenDate;
+}
+
+function generateTodoRepeatInstances(inputObj)
+{
+	var rule=null;
+	var alertTimeOut=new Array();
+	var firstDateSaved=false;
+	if(inputObj.repeatStart)
+		var resStart=new Date($.fullCalendar.parseDate(inputObj.items.realStart).getTime());
+	else if(inputObj.repeatEnd)
+		var resStart=new Date($.fullCalendar.parseDate(inputObj.items.realEnd).getTime());
+
+	if(typeof inputObj.lastGenDate!='undefined')
+		var resStart=new Date(inputObj.lastGenDate.getTime());
+
+	var lastGenDate=new Date(resStart.getTime());
+	if(typeof inputObj.rule == 'undefined')
+	{
+		var options = RRule.parseString(inputObj.items.ruleString);
+		options.dtstart = new Date(resStart.getTime());
+		if(inputObj.untilDate!=='')
+			options.until = inputObj.untilDate;
+			rule = new RRule(options);
+	}
+	else
+		rule=inputObj.rule;
+
+	var dates = new Array();
+	dates = rule.between(resStart, new Date(inputObj.futureRLimit.getTime()), true);
+
+	if(dates.length>0 && (dates[0]-resStart)!=0 || dates.length==0)
+		dates.splice(0,0,resStart);
+
+	var futureLimitDate = new Date(inputObj.futureRLimit.getTime());
+	futureLimitDate.setHours(resStart.getHours());
+	futureLimitDate.setMinutes(resStart.getMinutes());
+	futureLimitDate.setSeconds(resStart.getSeconds());
+
+
+	var startCheck = new Date(dates[dates.length-1].getTime());
+
+
+	var iterationEnd = dates.length;
+	if(globalSettings.appleremindersmode.value || (inputObj.repeatEnd=='' && inputObj.repeatStart!=''))
+		for(var i=0; i<globalMaxNextInstanesTodoCheckingNumber;i++)
+		{
+			var endCheck = new Date(startCheck.getTime()+ 30 * 24 * 3600 * 1000 + (24*3600*1000));
+			var tmpArray = new Array();
+				tmpArray = rule.between(startCheck, endCheck , true);
+			if(tmpArray.length>0)
+			{
+				var isBreak=false;
+				for(var j=0;j<tmpArray.length;j++)
+					if(dates[dates.length-1]-tmpArray[j]!=0)
+					{
+						dates.push(tmpArray[j]);
+						iterationEnd=dates.length-1;
+						isBreak=true;
+						break;
+					}
+				if(isBreak)
+					break;
+			}
+			startCheck=new Date(endCheck.getTime());
+		}
+
+
+	var realRepeatCount=inputObj.realRepeatCount;
+	var repeatCount=inputObj.repeatCount;
+	for(var i=0;i<iterationEnd;i++)
+	{
+		var varDate='', varEndDate='', valOffsetFrom='',intOffset=0;
+		var checkCont=false, dateStart='', dateEnd='';
+
+		realRepeatCount++;
+		if(inputObj.repeatEnd!='' && inputObj.repeatStart!='')
+		{
+
+			varDate=new Date(dates[i].getTime());
+			varEndDate=new Date(varDate.getTime()+inputObj.dayDifference);
+		}
+		else if(inputObj.repeatEnd=='' && inputObj.repeatStart!='')
+		{
+			varDate=new Date(dates[i].getTime());
+			if(i<=(dates.length-2))
+			{
+				varEndDate=new Date(dates[i+1].getTime());
+				varEndDate.setMinutes(varEndDate.getMinutes()-1);
+			}
+		}
+		else if(inputObj.repeatEnd!='' && inputObj.repeatStart=='')
+		{
+			varEndDate=new Date(dates[i].getTime());
+			if(i>0)
+			{
+				varDate=new Date(dates[i-1].getTime());
+				varDate.setMinutes(varDate.getMinutes()+1);
+			}
+			else if(typeof inputObj.previousRepeatStart!='undefined'&&inputObj.previousRepeatStart!=='')
+				varDate=new Date(inputObj.previousRepeatStart);
+		}
+
+		if(varDate!=='')
+		{
+			if(globalSettings.timezonesupport.value && inputObj.items.timeZone in timezones)
+				valOffsetFrom=getOffsetByTZ(inputObj.items.timeZone, varDate);
+			var realStart=new Date(varDate.getTime());
+			dateStart=new Date(varDate.getTime());
+			if(valOffsetFrom && (typeof inputObj.previousRepeatStart=='undefined' || inputObj.previousRepeatStart==''))
+			{
+				intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
+				dateStart.setTime(dateStart.getTime()+intOffset);
+			}
+
+		}
+
+		if(varEndDate!=='')
+		{
+
+			var realEnd=new Date(varEndDate.getTime());
+			var dateEnd=new Date(varEndDate.getTime());
+			if(intOffset)
+				dateEnd.setTime(dateEnd.getTime()+intOffset);
+		}
+
+		if(inputObj.repeatStart!='')
+		{
+			checkCont=isInRecurrenceArray(realStart,inputObj.stringUID,inputObj.recurrence_id_array, inputObj.items.timeZone);
+			if(inputObj.exDates.length>0)
+				if(inputObj.exDates.indexOf(dateStart.toString())!=-1)
+					checkCont=true;
+		}
+		else
+		{
+			checkCont=isInRecurrenceArray(realEnd,inputObj.stringUID,inputObj.recurrence_id_array, inputObj.items.timeZone);
+			if(inputObj.exDates.length>0)
+				if(inputObj.exDates.indexOf(dateEnd.toString())!=-1)
+					checkCont=true;
+		}
+
+		if(inputObj.items.after!=='' && !globalSettings.appleremindersmode.value && realRepeatCount>(parseInt(inputObj.items.after,10)))
+		{
+			checkCont=true;
+			realRepeatCount--;
+		}
+
+		if(globalSettings.appleremindersmode.value && firstDateSaved && inputObj.todoArray.length==1)
+		{
+			globalAppleSupport.nextDates[inputObj.items.id] =  new Date(dateEnd.getTime());
+			break;
+		}
+		if(!checkCont)
+		{
+			if(!inputObj.ignoreAlarms)
+				alertTimeOut=setAlertTimeouts(true, inputObj.alertTime, (inputObj.repeatStart=='' ? dateEnd : dateStart), (inputObj.repeatEnd=='' ? dateStart : dateEnd), {title:inputObj.items.title, status:inputObj.items.status},!firstDateSaved,inputObj.items.id);
+			firstDateSaved = true;
+			repeatCount++;
+			var tmpObj=$.extend({},inputObj.items,{
+			start:dateStart,
+			end:(inputObj.repeatEnd=='' && i==(dates.length-1) ? '' : dateEnd),
+			realStart:realStart,
+			realEnd:realEnd,
+			repeatCount:repeatCount,
+			realRepeatCount:realRepeatCount,
+			alertTimeOut:alertTimeOut
+			});
+
+			inputObj.preTodoArray.splice(inputObj.preTodoArray.length, 0, tmpObj);
+			if(inputObj.repeatStart!='')
+				lastGenDate = new Date(dateStart.getTime());
+			else
+				lastGenDate = new Date(dateEnd.getTime());
+		}
+	}
+
+	if(typeof globalEventList.repeatableTodo[inputObj.items.id] == 'undefined')
+		globalEventList.repeatableTodo[inputObj.items.id]={
+			todoArray:inputObj.todoArray,
+			lastGenDate:lastGenDate,
+			dayDifference:inputObj.dayDifference,
+			recurrence_id_array:inputObj.recurrence_id_array,
+			stringUID:inputObj.stringUID,
+			exDates:inputObj.exDates,
+			realRepeatCount:realRepeatCount,
+			repeatCount:repeatCount,
+			alertTime:inputObj.alertTime,
+			ignoreAlarms:inputObj.ignoreAlarms,
+			rule:rule,
+			items:inputObj.items
+		};
+	else
+	{
+		globalEventList.repeatableTodo[inputObj.items.id].lastGenDate=lastGenDate;
+		globalEventList.repeatableTodo[inputObj.items.id].realRepeatCount=realRepeatCount;
+		globalEventList.repeatableTodo[inputObj.items.id].repeatCount=repeatCount;
+	}
+}
+
 function loadRepeatEvents(inputRepeatEvent,prevLimit,toLimit)
 {
-	var frequency=inputRepeatEvent.frequency;
-	var monthPlus=0, dayPlus=0;
-	if(frequency=="DAILY\r\n" || frequency=="DAILY")
-	{
-		monthPlus=0,
-		dayPlus=1;
-	}
-	else if(frequency=="WEEKLY\r\n" || frequency=="WEEKLY")
-	{
-		monthPlus=0,
-		dayPlus=7;
-	}
-	else if(frequency=="MONTHLY\r\n" || frequency=="MONTHLY")
-	{
-		monthPlus=1,
-		dayPlus=0;
-	}
-	else if(frequency=="YEARLY\r\n" || frequency=="YEARLY")
-	{
-		monthPlus=12,
-		dayPlus=0;
-	}
-
-	var td='', td2='';
-	var valOffsetFrom='',intOffset='';
-	if(inputRepeatEvent.realStart)
-		var varDate=new Date(inputRepeatEvent.realStart.getTime());
-	else
-		var varDate=new Date(inputRepeatEvent.start.getTime());
-	if(inputRepeatEvent.realEnd)
-		var varEndDate=new Date(inputRepeatEvent.realEnd.getTime());
-	else
-		var varEndDate=new Date(inputRepeatEvent.end.getTime());
 	var repeatFromLine=new Date(prevLimit.getFullYear(), prevLimit.getMonth(), prevLimit.getDate(), 0, 0, 0);
-	var repeatCount=inputRepeatEvent.repeatCount;
-	var realRepeatCount=inputRepeatEvent.repeatCount;
-	var byMonthDay=inputRepeatEvent.byMonthDay;
-	var realStart,realEnd;
-	if(inputRepeatEvent.realUntilDate=='')
-		untilDate=toLimit;
-	else
-		untilDate=inputRepeatEvent.realUntilDate;
-	if(inputRepeatEvent.realUntil=='')
-		if(untilDate<repeatFromLine)
-			return;
-
-	if(byMonthDay!='' && dayPlus==0)
-		byMonthDay=varDate.getDate()+dayPlus;
-
-	var dayDifference=varEndDate.getTime()-varDate.getTime();
-	var iterator=0;
-	var ruleString=inputRepeatEvent.vcalendar.match(vCalendar.pre['contentline_RRULE2'])[0].match(vCalendar.pre['contentline_parse'])[4];
-	var dates = new Array();
-	if(ruleString.indexOf('BYMONTH=')!=-1 || ruleString.indexOf('BYMONTHDAY=')!=-1 || ruleString.indexOf('BYDAY=')!=-1)
-	{
-		if(inputRepeatEvent.rulePartsArray.length>0)
-		{
-
-			if(inputRepeatEvent.lastGenDate!='')
-			{
-				inputRepeatEvent.lastGenDate = new Date(prevLimit.getTime());
-				var objR =processRule(inputRepeatEvent.vcalendar,inputRepeatEvent.lastGenDate,inputRepeatEvent.rulePartsArray.slice(),[inputRepeatEvent.lastGenDate],frequencies.indexOf(inputRepeatEvent.frequency),toLimit,inputRepeatEvent.interval,inputRepeatEvent.uid,inputRepeatEvent.rCount,inputRepeatEvent.start,inputRepeatEvent.wkst,inputRepeatEvent.classType);
-			}
-			else
-				var objR =processRule(inputRepeatEvent.vcalendar,inputRepeatEvent.start,inputRepeatEvent.rulePartsArray.slice(),[inputRepeatEvent.start],frequencies.indexOf(inputRepeatEvent.frequency),toLimit,inputRepeatEvent.interval,inputRepeatEvent.uid,inputRepeatEvent.rCount,inputRepeatEvent.start,inputRepeatEvent.wkst,inputRepeatEvent.classType);
-
-			dates=objR.dates;
-			inputRepeatEvent.rCount=objR.rCount;
-		}
-		for(var idt=0;idt<dates.length;idt++)
-		{
-			varDate=new Date(dates[idt].getTime());
-			varEndDate=new Date(varDate.getTime()+dayDifference);
-			iterator++;
-			if((varDate.getTime()-repeatFromLine.getTime())<0)
-				continue;
-			if((varDate.getTime()-toLimit.getTime())>=0)
-				break;
-			if(inputRepeatEvent.realUntil=='')
-				var count=untilDate-varDate;
-			else
-				var count = inputRepeatEvent.realUntil - inputRepeatEvent.realRepeatCount;
-			if(untilDate&&count<0 || inputRepeatEvent.realUntilDate==''&&count<=0)
-				break;
-			else
-			{
-					if(inputRepeatEvent.frequency=="YEARLY")
-					{
-						if(inputRepeatEvent.lastYear!=varDate.getFullYear())
-						{
-							inputRepeatEvent.lastYear=varDate.getFullYear();
-							if(inputRepeatEvent.lastYear>0 && inputRepeatEvent.rCount%inputRepeatEvent.interval!=0)
-							{
-								inputRepeatEvent.rCount++;
-								continue;
-							}
-							inputRepeatEvent.rCount++;
-						}
-					}
-					realRepeatCount++;
-					inputRepeatEvent.realRepeatCount=realRepeatCount;
-					if(inputRepeatEvent.rec_id_array.length>0)
-					{
-						var checkCont = false;
-						for(var ir=0;ir<inputRepeatEvent.rec_id_array.length;ir++)
-						{
-							var recString = inputRepeatEvent.rec_id_array[ir].split(';')[0];
-							if(recString.charAt(recString.length-1)=='Z')
-							{
-								if(globalSettings.timezonesupport.value && inputRepeatEvent.timeZone in timezones)
-								{
-									var recValOffsetFrom=getOffsetByTZ(inputRepeatEvent.timeZone, varDate);
-									var recTime = new Date(recString.parseComnpactISO8601().getTime());
-									if(recValOffsetFrom)
-									{
-										var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-										recTime.setTime(recTime.getTime()+rintOffset);
-									}
-									if(recTime.toString()+inputRepeatEvent.rec_id_array[ir].split(';')[1] == varDate+inputRepeatEvent.stringUID)
-										checkCont=true;
-								}
-							}
-							else
-							{
-								if(recString.parseComnpactISO8601().toString()+inputRepeatEvent.rec_id_array[ir].split(';')[1] == varDate+inputRepeatEvent.stringUID)
-									checkCont=true;
-							}
-						}
-						if(checkCont)
-							continue;
-					}
-					if(!inputRepeatEvent.allDay)
-					{
-						var dateStart, dateEnd;
-						if(inputRepeatEvent.timeZone in timezones)
-							valOffsetFrom=getOffsetByTZ(inputRepeatEvent.timeZone, varDate);
-
-						realStart=new Date(varDate.getTime());
-						dateStart=new Date(realStart.getTime());
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							dateStart.setTime(dateStart.getTime()+intOffset);
-						}
-						if(inputRepeatEvent.exDates.length>0)
-							if(inputRepeatEvent.exDates.indexOf(dateStart.toString())!=-1)
-								continue;
-						realEnd=new Date(varEndDate.getTime());
-						dateEnd=new Date(realEnd.getTime());
-						if(intOffset)
-							dateEnd.setTime(dateEnd.getTime()+intOffset);
-					}
-					else
-					{
-						realStart=new Date(varDate.getTime());
-						if(inputRepeatEvent.exDates.length>0)
-							if(inputRepeatEvent.exDates.indexOf(realStart.toString())!=-1)
-								continue;
-						var dateStart=$.fullCalendar.formatDate(varDate,"yyyy-MM-dd'T'HH:mm:ss");
-						realEnd=new Date(varEndDate.getTime());
-						var dateEnd=$.fullCalendar.formatDate(varEndDate,"yyyy-MM-dd'T'HH:mm:ss");
-					}
-
-					if(inputRepeatEvent.alertTime.length>0)
-					{
-						var repeatAlarm='',
-						myVarDate='',
-						alertString='';
-						if(!inputRepeatEvent.collection.ignoreAlarms)
-							for(var v=0;v<inputRepeatEvent.alertTime.length;v++)
-							{
-								if((inputRepeatEvent.alertTime[v].charAt(0)=='-') || (inputRepeatEvent.alertTime[v].charAt(0)=='+'))
-								{
-									var startTime;
-									if(inputRepeatEvent.alertTime[v].charAt(0)=='-')
-									{
-										if(typeof dateStart=='string')
-											startTime = $.fullCalendar.parseDate(dateStart);
-										else
-											startTime=new Date(dateStart.getTime());
-										aTime=startTime.getTime() - parseInt(inputRepeatEvent.alertTime[v].substring(1, inputRepeatEvent.alertTime[v].length-1));
-									}
-									else if(inputRepeatEvent.alertTime[v].charAt(0)=='+')
-									{
-										if(typeof dateEnd=='string')
-											startTime = $.fullCalendar.parseDate(dateEnd);
-										else
-											startTime=new Date(dateEnd.getTime());
-										aTime=startTime.getTime() + parseInt(inputRepeatEvent.alertTime[v].substring(1, inputRepeatEvent.alertTime[v].length-1));
-									}
-									var now=new Date();
-
-									if(aTime>now)
-									{
-										var delay=aTime-now;
-										if(maxAlarmValue<delay)
-											delay=maxAlarmValue;
-										inputRepeatEvent.alertTimeOut[inputRepeatEvent.alertTimeOut.length]=setTimeout(function(startTime){
-											showAlertEvents(inputRepeatEvent.uid, (aTime-now),{start:new Date(startTime.getTime), allDay:inputRepeatEvent.allDay, title:inputRepeatEvent.title});
-										}, delay,startTime);
-									}
-								}
-							}
-					}
-					repeatCount++;
-					inputRepeatEvent.repeatCount=repeatCount;
-					var tmpObj=new items(inputRepeatEvent.etag, dateStart,dateEnd, inputRepeatEvent.title, inputRepeatEvent.allDay,inputRepeatEvent.uid, inputRepeatEvent.rid, inputRepeatEvent.evid, inputRepeatEvent.note, inputRepeatEvent.displayValue, inputRepeatEvent.alertTime, inputRepeatEvent.alertNote, inputRepeatEvent.realUntilDate, inputRepeatEvent.frequency, inputRepeatEvent.interval, inputRepeatEvent.realUntil, inputRepeatEvent.repeatStart, inputRepeatEvent.repeatEnd, byMonthDay, inputRepeatEvent.repeatCount, inputRepeatEvent.realRepeatCount, inputRepeatEvent.vcalendar, inputRepeatEvent.location, inputRepeatEvent.alertTimeOut,inputRepeatEvent.timeZone,realStart, realEnd, inputRepeatEvent.byDay, inputRepeatEvent.rec_id,inputRepeatEvent.wkst,inputRepeatEvent.classType,inputRepeatEvent.avail,inputRepeatEvent.hrefUrl,inputRepeatEvent.compareString,inputRepeatEvent.priority,inputRepeatEvent.status);
-					globalEventList.displayEventsArray[inputRepeatEvent.rid].splice(globalEventList.displayEventsArray[inputRepeatEvent.rid].length, 0, tmpObj);
-					inputRepeatEvent.lastGenDate = new Date(varDate.getTime());
-			}
-		}
-	}
-	else
-	{
-		while(true)
-		{
-			var dayNumberStart=varDate.getDate()+dayPlus;
-			var dayNumberEnd=varEndDate.getDate()+dayPlus;
-			if(dayPlus==0)
-			{
-				dayNumberStart=getValidRepeatDay(varDate,inputRepeatEvent.start);
-				dayNumberEnd=getValidRepeatDay(varEndDate,inputRepeatEvent.end);
-			}
-
-			if(varEndDate.getDate()>=dayNumberEnd)
-			{
-				varEndDate.setDate(dayNumberEnd);
-				varEndDate.setMonth(varEndDate.getMonth()+monthPlus);
-			}
-			else
-			{
-				varEndDate.setMonth(varEndDate.getMonth()+monthPlus);
-				varEndDate.setDate(dayNumberEnd);
-			}
-
-			varDate=new Date(varEndDate.getTime()-dayDifference);
-
-			if(byMonthDay!='' && dayPlus==0)
-				if(byMonthDay!=dayNumberStart)
-					continue;
-
-			iterator++;
-
-			if((varDate.getTime()-repeatFromLine.getTime())<0)
-				continue;
-			if((varDate.getTime()-toLimit.getTime())>=0)
-				break;
-
-			var count=untilDate-varDate;
-			if(count<0)
-				break;
-			else
-			{
-				if(inputRepeatEvent.byDay.length>0)
-					if(inputRepeatEvent.byDay.indexOf(varDate.getDay().toString())==-1)
-						continue;
-
-				if((iterator%inputRepeatEvent.interval)==0)
-				{
-					realRepeatCount++;
-					inputRepeatEvent.realRepeatCount=realRepeatCount;
-					if(inputRepeatEvent.rec_id_array.length>0)
-					{
-						var checkCont = false;
-						for(var ir=0;ir<inputRepeatEvent.rec_id_array.length;ir++)
-						{
-							var recString = inputRepeatEvent.rec_id_array[ir].split(';')[0];
-							if(recString.charAt(recString.length-1)=='Z')
-							{
-								if(globalSettings.timezonesupport.value && inputRepeatEvent.timeZone in timezones)
-								{
-									var recValOffsetFrom=getOffsetByTZ(inputRepeatEvent.timeZone, varDate);
-									var recTime = new Date(recString.parseComnpactISO8601().getTime());
-									if(recValOffsetFrom)
-									{
-										var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-										recTime.setTime(recTime.getTime()+rintOffset);
-									}
-									if(recTime.toString()+inputRepeatEvent.rec_id_array[ir].split(';')[1] == varDate+inputRepeatEvent.stringUID)
-										checkCont=true;
-								}
-							}
-							else
-							{
-								if(recString.parseComnpactISO8601().toString()+inputRepeatEvent.rec_id_array[ir].split(';')[1] == varDate+inputRepeatEvent.stringUID)
-									checkCont=true;
-							}
-						}
-						if(checkCont)
-							continue;
-					}
-					if(!inputRepeatEvent.allDay)
-					{
-						var dateStart, dateEnd;
-						if(inputRepeatEvent.timeZone in timezones)
-							valOffsetFrom=getOffsetByTZ(inputRepeatEvent.timeZone, varDate);
-
-						realStart=new Date(varDate.getTime());
-						dateStart=new Date(realStart.getTime());
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							dateStart.setTime(dateStart.getTime()+intOffset);
-						}
-						if(inputRepeatEvent.exDates.length>0)
-							if(inputRepeatEvent.exDates.indexOf(dateStart.toString())!=-1)
-								continue;
-						realEnd=new Date(varEndDate.getTime());
-						dateEnd=new Date(realEnd.getTime());
-						if(intOffset)
-							dateEnd.setTime(dateEnd.getTime()+intOffset);
-					}
-					else
-					{
-						realStart=new Date(varDate.getTime());
-						if(inputRepeatEvent.exDates.length>0)
-							if(inputRepeatEvent.exDates.indexOf(realStart.toString())!=-1)
-								continue;
-						var dateStart=$.fullCalendar.formatDate(varDate,"yyyy-MM-dd'T'HH:mm:ss");
-						realEnd=new Date(varEndDate.getTime());
-						var dateEnd=$.fullCalendar.formatDate(varEndDate,"yyyy-MM-dd'T'HH:mm:ss");
-					}
-
-					if(inputRepeatEvent.alertTime.length>0)
-					{
-						var repeatAlarm='',
-						myVarDate='',
-						alertString='';
-						if(!inputRepeatEvent.collection.ignoreAlarms)
-							for(var v=0;v<inputRepeatEvent.alertTime.length;v++)
-							{
-								if((inputRepeatEvent.alertTime[v].charAt(0)=='-') || (inputRepeatEvent.alertTime[v].charAt(0)=='+'))
-								{
-									var startTime;
-									if(inputRepeatEvent.alertTime[v].charAt(0)=='-')
-									{
-										if(typeof dateStart=='string')
-											startTime = $.fullCalendar.parseDate(dateStart);
-										else
-											startTime=new Date(dateStart.getTime());
-										aTime=startTime.getTime() - parseInt(inputRepeatEvent.alertTime[v].substring(1, inputRepeatEvent.alertTime[v].length-1));
-									}
-									else if(inputRepeatEvent.alertTime[v].charAt(0)=='+')
-									{
-										if(typeof dateEnd=='string')
-											startTime = $.fullCalendar.parseDate(dateEnd);
-										else
-											startTime=new Date(dateEnd.getTime());
-										aTime=startTime.getTime() + parseInt(inputRepeatEvent.alertTime[v].substring(1, inputRepeatEvent.alertTime[v].length-1));
-									}
-									var now=new Date();
-
-									if(aTime>now)
-									{
-										var delay=aTime-now;
-										if(maxAlarmValue<delay)
-											delay=maxAlarmValue;
-										inputRepeatEvent.alertTimeOut[inputRepeatEvent.alertTimeOut.length]=setTimeout(function(startTime){
-											showAlertEvents(inputRepeatEvent.uid, (aTime-now),{start:new Date(startTime.getTime()), allDay:inputRepeatEvent.allDay, title:inputRepeatEvent.title});
-										}, delay,startTime);
-									}
-								}
-							}
-					}
-					repeatCount++;
-					inputRepeatEvent.repeatCount=repeatCount;
-					var tmpObj=new items(inputRepeatEvent.etag, dateStart,dateEnd, inputRepeatEvent.title, inputRepeatEvent.allDay,inputRepeatEvent.uid, inputRepeatEvent.rid, inputRepeatEvent.evid, inputRepeatEvent.note, inputRepeatEvent.displayValue, inputRepeatEvent.alertTime, inputRepeatEvent.alertNote, inputRepeatEvent.realUntilDate, inputRepeatEvent.frequency, inputRepeatEvent.interval, inputRepeatEvent.realUntil, inputRepeatEvent.repeatStart, inputRepeatEvent.repeatEnd, byMonthDay, inputRepeatEvent.repeatCount, inputRepeatEvent.realRepeatCount, inputRepeatEvent.vcalendar, inputRepeatEvent.location, inputRepeatEvent.alertTimeOut,inputRepeatEvent.timeZone,realStart, realEnd, inputRepeatEvent.byDay, inputRepeatEvent.rec_id,inputRepeatEvent.wkst,inputRepeatEvent.classType,inputRepeatEvent.avail,inputRepeatEvent.hrefUrl,inputRepeatEvent.compareString,inputRepeatEvent.priority,inputRepeatEvent.status);
-					globalEventList.displayEventsArray[inputRepeatEvent.rid].splice(globalEventList.displayEventsArray[inputRepeatEvent.rid].length, 0, tmpObj);
-				}
-			}
-		}
-	}
+	generateRepeatInstances({
+		untilDate:inputRepeatEvent.items.untilDate,
+		repeatStart:inputRepeatEvent.lastGenDate,
+		futureRLimit:toLimit,
+		stringUID:inputRepeatEvent.stringUID,
+		recurrence_id_array:inputRepeatEvent.recurrence_id_array,
+		exDates:inputRepeatEvent.exDates,
+		alertTime:inputRepeatEvent.alertTime,
+		ignoreAlarms:inputRepeatEvent.ignoreAlarms,
+		rule:inputRepeatEvent.rule,
+		items:inputRepeatEvent.items
+	});
 }
 
 function loadRepeatTodo(inputRepeatTodo,prevLimit)
 {
-	var frequency=inputRepeatTodo.frequency;
-	var monthPlus=0, dayPlus=0;
-	if(frequency=="DAILY\r\n" || frequency=="DAILY")
+	var preTodoArray=new Array();
+	var previousRepeatStart = '';
+	var repeatInstances = globalEventList.displayTodosArray[inputRepeatTodo.items.res_id].filter(function(elm){return elm.id==inputRepeatTodo.items.id && elm.type!=''});
+	if(repeatInstances.length>0)
 	{
-		monthPlus=0,
-		dayPlus=1;
+		var index = globalEventList.displayTodosArray[inputRepeatTodo.items.res_id].indexOf(repeatInstances[repeatInstances.length-1]);
+		previousRepeatStart = repeatInstances[repeatInstances.length-1].start;
+		globalEventList.displayTodosArray[inputRepeatTodo.items.res_id].splice(index,1);
 	}
-	else if(frequency=="WEEKLY\r\n" || frequency=="WEEKLY")
-	{
-		monthPlus=0,
-		dayPlus=7;
-	}
-	else if(frequency=="MONTHLY\r\n" || frequency=="MONTHLY")
-	{
-		monthPlus=1,
-		dayPlus=0;
-	}
-	else if(frequency=="YEARLY\r\n" || frequency=="YEARLY")
-	{
-		monthPlus=12,
-		dayPlus=0;
-	}
+	generateTodoRepeatInstances({
+		loadRepeatTodo:true,
+		rule:inputRepeatTodo.rule,
+		realRepeatCount:--inputRepeatTodo.realRepeatCount,
+		repeatCount:--inputRepeatTodo.repeatCount,
+		dayDifference:inputRepeatTodo.dayDifference,
+		untilDate:inputRepeatTodo.items.untilDate,
+		repeatStart:inputRepeatTodo.items.repeatStart,
+		repeatEnd:inputRepeatTodo.items.repeatEnd,
+		futureRLimit:globalToLoadedLimitTodo,
+		stringUID:inputRepeatTodo.stringUID,
+		recurrence_id_array:inputRepeatTodo.recurrence_id_array,
+		exDates:inputRepeatTodo.exDates,
+		alertTime:inputRepeatTodo.alertTime,
+		ignoreAlarms:inputRepeatTodo.ignoreAlarms,
+		isChange:false,
+		lastGenDate:inputRepeatTodo.lastGenDate,
+		todoArray:inputRepeatTodo.todoArray,
+		preTodoArray:preTodoArray,
+		previousRepeatStart:previousRepeatStart,
+		items:inputRepeatTodo.items
+	});
 
-	var td='', td2='';
-	var valOffsetFrom='',intOffset='',realStart,realEnd;
-	var lastObjStart='';
-	for(var it=globalEventList.displayTodosArray[inputRepeatTodo.rid].length-1;it>=0;it--)
-		if(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].id==inputRepeatTodo.uid && globalEventList.displayTodosArray[inputRepeatTodo.rid][it].type!='')
-		{
-			//if(prevLimit <= inputRepeatTodo.realUntilDate  && prevLimit < globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start)
-			//{
-			//	globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(it, 1);
-			//}
-			//if(it>0)
-			//{
-				if(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start=='' || globalEventList.displayTodosArray[inputRepeatTodo.rid][it].end=='')
-					return false;
-				if(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start!=null)
-				{
-					if(typeof globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start=='string')
-						lastObjStart=$.fullCalendar.parseDate(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start);
-					else
-						lastObjStart=new Date(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].start.getTime());
-				}
-				else if(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].end!=null)
-				{
-					if(typeof globalEventList.displayTodosArray[inputRepeatTodo.rid][it].end=='string')
-						lastObjStart=$.fullCalendar.parseDate(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].end);
-					else
-						lastObjStart=new Date(globalEventList.displayTodosArray[inputRepeatTodo.rid][it].end.getTime());
-				}
-			//}
-			globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(it, 1);
-			inputRepeatTodo.repeatCount--;
-			break;
-		}
-	if(lastObjStart=='')
-		return false;
-	var repeatFromLine=new Date(lastObjStart.getFullYear(), lastObjStart.getMonth(), lastObjStart.getDate(), 0, 0, 0);
-	var repeatCount=inputRepeatTodo.repeatCount;
-	var realRepeatCount=inputRepeatTodo.repeatCount;
-	var byMonthDay=inputRepeatTodo.byMonthDay;
-	if(inputRepeatTodo.realUntilDate=='')
-		untilDate=globalToLoadedLimitTodo;
-	else
-		untilDate=inputRepeatTodo.realUntilDate;
-	if(inputRepeatTodo.realUntil=='')
-		if(untilDate<repeatFromLine)
-			return;
-
-		var ruleString=inputRepeatTodo.vcalendar.match(vCalendar.pre['contentline_RRULE2'])[0].match(vCalendar.pre['contentline_parse'])[4];
-		var isSpecialRule=false;
-		if(ruleString.indexOf('BYMONTH=')!=-1 || ruleString.indexOf('BYMONTHDAY=')!=-1 || ruleString.indexOf('BYDAY=')!=-1)
-			isSpecialRule=true;
-		var staticDate='';
-		if(inputRepeatTodo.repeatStart)
-		{
-			var staticDate=inputRepeatTodo.repeatStart;
-			var varDate=new Date($.fullCalendar.parseDate(inputRepeatTodo.repeatStart).getTime());
-		}
-		else if(inputRepeatTodo.repeatEnd)
-		{
-			var staticDate=inputRepeatTodo.repeatEnd;
-			var varDate=new Date($.fullCalendar.parseDate(inputRepeatTodo.repeatEnd).getTime());
-		}
-		if(inputRepeatTodo.repeatEnd)
-			var varEndDate=new Date($.fullCalendar.parseDate(inputRepeatTodo.repeatEnd).getTime());
-//		else
-//			var varEndDate=new Date(end.getTime());
-
-		var lastGenDate='';
-		var repeatStart=new Date(varDate.getTime());
-//		var repeatEnd=new Date(varEndDate.getTime());
-
-
-		var rCount = 0, dayDifference=0;
-		if(inputRepeatTodo.repeatEnd)
-			dayDifference=varEndDate.getTime()-varDate.getTime();
-		var iterator=0;
-		var lastYear=0;
-		var dateStart,dateEnd;
-		if(isSpecialRule)
-		{
-			if(inputRepeatTodo.rulePartsArray.length>0)
-			{
-				var repeatTodoStart;
-
-				if(inputRepeatTodo.start!='')
-				{
-					if(typeof inputRepeatTodo.start=='string')
-						repeatTodoStart=$.fullCalendar.parseDate(inputRepeatTodo.start);
-					else
-						repeatTodoStart=new Date(inputRepeatTodo.start.getTime());
-				}
-				else if(inputRepeatTodo.end!=null)
-				{
-					if(typeof inputRepeatTodo.end=='string')
-						repeatTodoStart=$.fullCalendar.parseDate(inputRepeatTodo.end);
-					else
-						repeatTodoStart=new Date(inputRepeatTodo.end.getTime());
-				}
-
-				var repeatLimit = new Date(globalToLoadedLimitTodo.getTime());
-				//repeatLimit.setMonth(repeatLimit.getMonth() + 2);
-				if(inputRepeatTodo.lastGenDate!='')
-				{
-					var lastGen = new Date(inputRepeatTodo.lastGenDate.getTime());
-
-					var onePrevNext = new Date(prevLimit.getTime());
-					onePrevNext.setDate(0);
-					inputRepeatTodo.lastGenDate.setDate(1);
-					inputRepeatTodo.lastGenDate.setMonth(onePrevNext.getMonth()-1);
-					inputRepeatTodo.lastGenDate.setFullYear(onePrevNext.getFullYear());
-					var objR =processRule(inputRepeatTodo.vcalendar,inputRepeatTodo.lastGenDate,inputRepeatTodo.rulePartsArray.slice(),[inputRepeatTodo.lastGenDate],frequencies.indexOf(inputRepeatTodo.frequency),repeatLimit,inputRepeatTodo.interval,inputRepeatTodo.id,inputRepeatTodo.rCount,repeatTodoStart,inputRepeatTodo.wkst);
-				}
-				else
-					var objR =processRule(inputRepeatTodo.vcalendar,repeatTodoStart,inputRepeatTodo.rulePartsArray.slice(),[repeatTodoStart],frequencies.indexOf(inputRepeatTodo.frequency),repeatLimit,inputRepeatTodo.interval,inputRepeatTodo.id,inputRepeatTodo.rCount,repeatTodoStart,inputRepeatTodo.wkst);
-
-				dates=objR.dates;
-				inputRepeatTodo.rCount=objR.rCount;
-			}
-			realRepeatCount++;
-			for(var idt=0;idt<dates.length;idt++)
-			{
-				if(inputRepeatTodo.repeatEnd!='' && inputRepeatTodo.repeatStart!='')
-				{
-					varDate=new Date(dates[idt].getTime());
-					varEndDate=new Date(varDate.getTime()+dayDifference);
-				}
-				else if(inputRepeatTodo.repeatEnd=='' && inputRepeatTodo.repeatStart!='')
-				{
-					varDate=new Date(dates[idt].getTime());
-					if(idt<(dates.length-1))
-					{
-						varEndDate=new Date(dates[idt+1].getTime());
-						varEndDate.setMinutes(varEndDate.getMinutes()-1);
-					}
-					else
-						varEndDate = null;
-				}
-				else if(inputRepeatTodo.repeatEnd!='' && inputRepeatTodo.repeatStart=='')
-				{
-					varEndDate=new Date(dates[idt].getTime());
-					if(idt>0)
-					{
-						varDate=new Date(dates[idt-1].getTime());
-						varDate.setMinutes(varDate.getMinutes()+1);
-					}
-				}
-
-				if((varDate.getTime()-repeatFromLine.getTime())<0)
-					continue;
-				if((varDate.getTime()-globalToLoadedLimitTodo.getTime())>=0)
-					break;
-				if(inputRepeatTodo.realUntil=='')
-					var count=untilDate-varDate;
-				else
-					var count = inputRepeatTodo.realUntil - inputRepeatTodo.realRepeatCount;
-				if(count<0)
-					break;
-				else
-				{
-					iterator++;
-					if(inputRepeatTodo.frequency=="YEARLY")
-					{
-						if(inputRepeatTodo.lastYear!=varDate.getFullYear())
-						{
-							inputRepeatTodo.lastYear=varDate.getFullYear();
-							if(inputRepeatTodo.lastYear>0 && inputRepeatTodo.rCount%inputRepeatTodo.interval!=0)
-							{
-								inputRepeatTodo.rCount++;
-								continue;
-							}
-							inputRepeatTodo.rCount++;
-						}
-					}
-					realRepeatCount++;
-					inputRepeatTodo.realRepeatCount=realRepeatCount;
-					if(inputRepeatTodo.realUntilDate=='' && inputRepeatTodo.repeatEnd=='' && realRepeatCount > inputRepeatTodo.realUntil)
-						varEndDate=null;
-					if(inputRepeatTodo.recurrence_id_array.length>0)
-					{
-						var checkCont = false;
-						for(var ir=0;ir<inputRepeatTodo.recurrence_id_array.length;ir++)
-						{
-							var recString = inputRepeatTodo.recurrence_id_array[ir].split(';')[0];
-							if(recString.charAt(recString.length-1)=='Z')
-							{
-								if(globalSettings.timezonesupport.value && inputRepeatTodo.tzName in timezones)
-								{
-									var recValOffsetFrom=getOffsetByTZ(inputRepeatTodo.tzName, varDate);
-									var recTime = new Date(recString.parseComnpactISO8601().getTime());
-									if(recValOffsetFrom)
-									{
-										var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-										recTime.setTime(recTime.getTime()+rintOffset);
-									}
-									if(recTime.toString()+inputRepeatTodo.recurrence_id_array[ir].split(';')[1] == varDate+inputRepeatTodo.stringUID)
-										checkCont=true;
-								}
-							}
-							else
-							{
-								if(recString.parseComnpactISO8601().toString()+inputRepeatTodo.recurrence_id_array[ir].split(';')[1] == varDate+inputRepeatTodo.stringUID)
-									checkCont=true;
-							}
-							if(checkCont)
-								continue;
-						}
-					}
-				if(globalSettings.timezonesupport.value && inputRepeatTodo.tzName in timezones)
-					valOffsetFrom=getOffsetByTZ(inputRepeatTodo.tzName, varDate);
-				realStart=new Date(varDate.getTime());
-
-				dateStart=new Date(varDate.getTime());
-				if(valOffsetFrom)
-				{
-					intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-					dateStart.setTime(dateStart.getTime()+intOffset);
-				}
-				if(inputRepeatTodo.exDates.length>0)
-					if(inputRepeatTodo.exDates.indexOf(dateStart.toString())!=-1)
-						continue;
-				if(varEndDate!=null)
-				{
-					realEnd=new Date(varEndDate.getTime());
-					dateEnd=new Date(varEndDate.getTime());
-					if(intOffset)
-						dateEnd.setTime(dateEnd.getTime()+intOffset);
-				}
-				else
-				{
-					dateEnd=null;
-					realEnd=null;
-				}
-
-
-
-					if(inputRepeatTodo.alertTime.length>0 && dateEnd!=null)
-					{
-						var repeatAlarm='',
-						myVarDate='',
-						alertString='';
-						if(!inputRepeatTodo.collection.ignoreAlarms)
-							for(var v=0;v<inputRepeatTodo.alertTime.length;v++)
-							{
-								if(inputRepeatTodo.alertTime[v].charAt(0)=='-' || inputRepeatTodo.alertTime[v].charAt(0)=='+')
-								{
-									var aTime=dateEnd;
-									aTime=aTime.getTime();
-									var dur=parseInt(inputRepeatTodo.alertTime[v].substring(1, inputRepeatTodo.alertTime[v].length-1));
-									if(inputRepeatTodo.alertTime[v].charAt(0)=='-')
-										aTime=aTime-dur;
-									else
-										aTime=aTime+dur;
-
-									var now=new Date();
-								}
-								else
-								{
-									aTime=$.fullCalendar.parseDate(inputRepeatTodo.alertTime[v]);
-									now=new Date();
-								}
-								if(aTime>now)
-								{
-									var delay=aTime-now;
-									if(maxAlarmValue<delay)
-										delay=maxAlarmValue;
-
-									inputRepeatTodo.alertTimeOut[inputRepeatTodo.alertTimeOut.length]=setTimeout(function(){showAlertTODO(inputRepeatTodo.uid, (aTime-now), {start:dateStart, allDay:all, title:title, status:inputRepeatTodo.status});}, delay);
-								}
-							}
-					}
-
-					repeatCount++;
-					inputRepeatTodo.repeatCount=repeatCount;
-					var tmpObj=new todoItems(dateStart, dateEnd, inputRepeatTodo.realUntilDate, inputRepeatTodo.frequency, inputRepeatTodo.interval, inputRepeatTodo.realUntil, inputRepeatTodo.wkst,  inputRepeatTodo.repeatStart, inputRepeatTodo.repeatEnd, inputRepeatTodo.repeatCount, inputRepeatTodo.realRepeatCount,inputRepeatTodo.byDay, inputRepeatTodo.location, inputRepeatTodo.note, inputRepeatTodo.title, inputRepeatTodo.uid, inputRepeatTodo.vcalendar, inputRepeatTodo.etag, inputRepeatTodo.alertTime, inputRepeatTodo.alertNote, inputRepeatTodo.status, inputRepeatTodo.filterStatus, inputRepeatTodo.rec_id, inputRepeatTodo.repeatHash, inputRepeatTodo.percent, inputRepeatTodo.displayValue, inputRepeatTodo.rid, inputRepeatTodo.compareString, inputRepeatTodo.tzName, realStart, realEnd, inputRepeatTodo.alertTimeOut,inputRepeatTodo.classType,inputRepeatTodo.url,inputRepeatTodo.completedOn,inputRepeatTodo.sequence,inputRepeatTodo.priority,inputRepeatTodo.renderPriority, inputRepeatTodo.finalAString);
-					globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(globalEventList.displayTodosArray[inputRepeatTodo.rid].length, 0, tmpObj);
-					lastGenDate = new Date(dateStart.getTime());
-				}
-			}
-			/*if(inputRepeatTodo.repeatEnd=='')
-			{
-				repeatCount++;
-				inputRepeatTodo.repeatCount=repeatCount;
-
-				var tmpObj=new todoItems(dateStart, inputRepeatTodo.end, inputRepeatTodo.realUntilDate, inputRepeatTodo.frequency, inputRepeatTodo.interval, inputRepeatTodo.realUntil, inputRepeatTodo.wkst,  inputRepeatTodo.repeatStart, inputRepeatTodo.repeatEnd, inputRepeatTodo.repeatCount, inputRepeatTodo.realRepeatCount,inputRepeatTodo.byDay, inputRepeatTodo.location, inputRepeatTodo.note, inputRepeatTodo.title, inputRepeatTodo.uid, inputRepeatTodo.vcalendar, inputRepeatTodo.etag, inputRepeatTodo.alertTime, inputRepeatTodo.alertNote, inputRepeatTodo.status, inputRepeatTodo.filterStatus, inputRepeatTodo.rec_id, inputRepeatTodo.repeatHash, inputRepeatTodo.percent, inputRepeatTodo.displayValue, inputRepeatTodo.rid, inputRepeatTodo.compareString, inputRepeatTodo.tzName, realStart, realEnd, inputRepeatTodo.alertTimeOut,inputRepeatTodo.classType,inputRepeatTodo.url,inputRepeatTodo.completedOn,inputRepeatTodo.sequence,inputRepeatTodo.priority,inputRepeatTodo.renderPriority,inputRepeatTodo.finalAString,inputRepeatTodo.title.toLowerCase().multiReplace(globalSearchTransformAlphabet));
-
-				globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(globalEventList.displayTodosArray[inputRepeatTodo.rid].length, 0, tmpObj);
-				inputRepeatTodo.lastGenDate = new Date(varDate.getTime());
-			}*/
-		}
-		else
-		{
-			var rtDate='';
-			var prevStart=new Date(varDate.getTime());
-			var counterRepeat=0;
-			if(inputRepeatTodo.realStart!='')
-				rtDate=new Date($.fullCalendar.parseDate(inputRepeatTodo.realStart).getTime());
-			else if(inputRepeatTodo.realEnd!='')
-				rtDate=new Date($.fullCalendar.parseDate(inputRepeatTodo.realEnd).getTime());
-			while(true)
-			{
-				if(counterRepeat>0)
-				{
-
-					iterator++;
-
-				realRepeatCount++;
-				inputRepeatTodo.realRepeatCount=realRepeatCount;
-
-						if(globalSettings.timezonesupport.value && inputRepeatTodo.tzName in timezones)
-							valOffsetFrom=getOffsetByTZ(inputRepeatTodo.tzName, varDate);
-
-						if(inputRepeatTodo.repeatEnd!='' && inputRepeatTodo.repeatStart!='')
-						{
-							dateStart=new Date(prevStart.getTime());
-							dateEnd=new Date(dateStart.getTime()+dayDifference);
-						}
-						else if(inputRepeatTodo.repeatEnd=='' && inputRepeatTodo.repeatStart!='')
-						{
-							dateStart=new Date(prevStart.getTime());
-							dateEnd=new Date(varDate.getTime());
-							dateEnd.setMinutes(dateEnd.getMinutes()-1);
-						}
-						else if(inputRepeatTodo.repeatEnd!='' && inputRepeatTodo.repeatStart=='')
-						{
-							dateEnd=new Date(varDate.getTime());
-							dateStart=new Date(prevStart.getTime());
-							dateStart.setMinutes(dateStart.getMinutes()+1);
-						}
-						realStart=new Date(dateStart.getTime());
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							dateStart.setTime(dateStart.getTime()+intOffset);
-						}
-						realEnd=new Date(dateEnd.getTime());
-
-						var recIDfound=false;
-						if(inputRepeatTodo.recurrence_id_array.length>0)
-						{
-							for(var ir=0;ir<inputRepeatTodo.recurrence_id_array.length;ir++)
-							{
-								var recString = inputRepeatTodo.recurrence_id_array[ir].split(';')[0];
-								if(recString.charAt(recString.length-1)=='Z')
-								{
-									if(globalSettings.timezonesupport.value && inputRepeatTodo.tzName in timezones)
-									{
-										var recValOffsetFrom=getOffsetByTZ(inputRepeatTodo.tzName, varDate);
-										var recTime = new Date(recString.parseComnpactISO8601().getTime());
-										if(recValOffsetFrom)
-										{
-											var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-											recTime.setTime(recTime.getTime()+rintOffset);
-										}
-										if(recTime.toString()+inputRepeatTodo.recurrence_id_array[ir].split(';')[1] == varDate+inputRepeatTodo.stringUID)
-											recIDfound=true;
-									}
-								}
-								else
-								{
-									if(recString.parseComnpactISO8601().toString()+inputRepeatTodo.recurrence_id_array[ir].split(';')[1] == varDate+inputRepeatTodo.stringUID)
-										recIDfound=true;
-								}
-							}
-						}
-						if(inputRepeatTodo.exDates.length>0)
-							if(inputRepeatTodo.exDates.indexOf(dateStart.toString())!=-1)
-								recIDfound=true;
-						if(intOffset)
-							dateEnd.setTime(dateEnd.getTime()+intOffset);
-
-					if(!recIDfound && ((dateStart.getTime()-repeatFromLine.getTime())>0) && (iterator%inputRepeatTodo.interval)==0)
-					{
-						realRepeatCount++;
-						inputRepeatTodo.realRepeatCount=realRepeatCount;
-
-						if(inputRepeatTodo.alertTime.length>0)
-						{
-							var repeatAlarm='',
-							myVarDate='',
-							alertString='';
-							if(!inputRepeatTodo.collection.ignoreAlarms)
-								for(var v=0;v<inputRepeatTodo.alertTime.length;v++)
-								{
-									if(inputRepeatTodo.alertTime[v].charAt(0)=='-' || inputRepeatTodo.alertTime[v].charAt(0)=='+')
-									{
-										var aTime=dateEnd;
-										aTime=aTime.getTime();
-										var dur=parseInt(inputRepeatTodo.alertTime[v].substring(1, inputRepeatTodo.alertTime[v].length-1));
-										if(inputRepeatTodo.alertTime[v].charAt(0)=='-')
-											aTime=aTime-dur;
-										else
-											aTime=aTime+dur;
-
-										var now=new Date();
-									}
-									else
-									{
-										aTime=$.fullCalendar.parseDate(inputRepeatTodo.alertTime[v]);
-										now=new Date();
-									}
-									if(aTime>now)
-									{
-										var delay=aTime-now;
-										if(maxAlarmValue<delay)
-											delay=maxAlarmValue;
-
-										inputRepeatTodo.alertTimeOut[inputRepeatTodo.alertTimeOut.length]=setTimeout(function(){showAlertTODO(inputRepeatTodo.uid, (aTime-now), {start:dateStart, allDay:all, title:title, status:inputRepeatTodo.status});}, delay);
-									}
-								}
-						}
-						if(inputRepeatTodo.realEnd=='' && (dateEnd.getTime()-globalToLoadedLimitTodo.getTime())>=0)
-							break;
-						var tmpObj=new todoItems(dateStart, dateEnd, inputRepeatTodo.realUntilDate, inputRepeatTodo.frequency, inputRepeatTodo.interval, inputRepeatTodo.realUntil, inputRepeatTodo.wkst,  inputRepeatTodo.repeatStart, inputRepeatTodo.repeatEnd, inputRepeatTodo.repeatCount, inputRepeatTodo.realRepeatCount, inputRepeatTodo.byDay, inputRepeatTodo.location, inputRepeatTodo.note, inputRepeatTodo.title, inputRepeatTodo.uid, inputRepeatTodo.vcalendar, inputRepeatTodo.etag, inputRepeatTodo.alertTime, inputRepeatTodo.alertNote, inputRepeatTodo.status, inputRepeatTodo.filterStatus, inputRepeatTodo.rec_id, inputRepeatTodo.repeatHash, inputRepeatTodo.percent, inputRepeatTodo.displayValue, inputRepeatTodo.rid, inputRepeatTodo.compareString, inputRepeatTodo.tzName, realStart, realEnd, inputRepeatTodo.alertTimeOut,inputRepeatTodo.classType,inputRepeatTodo.url,inputRepeatTodo.completedOn,inputRepeatTodo.sequence,inputRepeatTodo.priority,inputRepeatTodo.renderPriority ,inputRepeatTodo.finalAString);
-						globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(globalEventList.displayTodosArray[inputRepeatTodo.rid].length, 0, tmpObj);
-						inputRepeatTodo.lastGenDate = new Date(dateStart.getTime());
-					}
-				}
-				if((varDate.getTime()-repeatFromLine.getTime())>0)
-					counterRepeat++;
-				prevStart=new Date(varDate.getTime());
-				var dayNumberDate=rtDate.getDate()+dayPlus;
-
-				if(dayPlus==0 && monthPlus==1)
-					dayNumberDate=getValidRepeatDay(rtDate,staticDate);
-
-				if(rtDate.getDate()>=dayNumberDate)
-				{
-					rtDate.setDate(dayNumberDate);
-					rtDate.setMonth(rtDate.getMonth()+monthPlus);
-				}
-				else
-				{
-					rtDate.setMonth(rtDate.getMonth()+monthPlus);
-					rtDate.setDate(dayNumberDate);
-				}
-				varDate=new Date(rtDate.getTime());
-				if((prevStart.getTime()-globalToLoadedLimitTodo.getTime())>=0)
-					break;
-				if(inputRepeatTodo.repeatStart!='' )
-					var count=untilDate-prevStart;
-				else
-					var count=untilDate-varDate;
-				if(count<0)
-					break;
-			}
-			if(inputRepeatTodo.realEnd=='')
-			{
-				realRepeatCount++;
-				inputRepeatTodo.realRepeatCount=realRepeatCount;
-				var tmpObj=new todoItems(dateStart, inputRepeatTodo.end, inputRepeatTodo.realUntilDate, inputRepeatTodo.frequency, inputRepeatTodo.interval, inputRepeatTodo.realUntil, inputRepeatTodo.wkst,  inputRepeatTodo.repeatStart, inputRepeatTodo.repeatEnd, inputRepeatTodo.repeatCount, inputRepeatTodo.realRepeatCount, inputRepeatTodo.byDay, inputRepeatTodo.location, inputRepeatTodo.note, inputRepeatTodo.title, inputRepeatTodo.uid, inputRepeatTodo.vcalendar, inputRepeatTodo.etag, inputRepeatTodo.alertTime, inputRepeatTodo.alertNote, inputRepeatTodo.status, inputRepeatTodo.filterStatus, inputRepeatTodo.rec_id, inputRepeatTodo.repeatHash, inputRepeatTodo.percent, inputRepeatTodo.displayValue, inputRepeatTodo.rid, inputRepeatTodo.compareString, inputRepeatTodo.tzName, realStart, realEnd, inputRepeatTodo.alertTimeOut,inputRepeatTodo.classType,inputRepeatTodo.url,inputRepeatTodo.completedOn,inputRepeatTodo.sequence,inputRepeatTodo.priority, inputRepeatTodo.renderPriority,inputRepeatTodo.finalAString);
-				globalEventList.displayTodosArray[inputRepeatTodo.rid].splice(globalEventList.displayTodosArray[inputRepeatTodo.rid].length, 0, tmpObj);
-				inputRepeatTodo.lastGenDate = new Date(prevStart.getTime());
-			}
-		}
+	$.merge(globalEventList.displayTodosArray[inputRepeatTodo.items.res_id],preTodoArray);
 }
-
 
 function getPrevMonths(viewStart)
 {
@@ -1602,8 +1100,8 @@ function getNextMonths(viewEnd)
 			globalLimitLoading='future';
 		}
 
-		for (var i=0;i<globalEventList.repeatable.length;i++)
-			loadRepeatEvents(globalEventList.repeatable[i],prevLimit,futureDate);
+		for (var repeat in globalEventList.repeatable)
+			loadRepeatEvents(globalEventList.repeatable[repeat],prevLimit,futureDate);
 
 		if(limitSet)
 		{
@@ -1667,8 +1165,8 @@ function getNextMonthsTodo(fromCalendar)
 			globalLimitTodoLoading='futureTodo';
 		}
 
-		for (var i=0;i<globalEventList.repeatableTodo.length;i++)
-			loadRepeatTodo(globalEventList.repeatableTodo[i],prevLimit);
+		for(var repeat in globalEventList.repeatableTodo)
+			loadRepeatTodo(globalEventList.repeatableTodo[repeat],prevLimit);
 
 		if(limitSet)
 		{
@@ -1802,7 +1300,8 @@ function interResourceEdit(op, delUID,isFormHidden)
 	var tmp=res.href.match(vCalendar.pre['hrefRex']);
 	var origUID=tmp[1]+res.userAuth.userName+'@'+tmp[2];
 
-	$('#etag').val('');
+	if(op != 'MOVE_IN')
+		$('#etag').val('');
 	var srcUID=$('#uid').val().substring($('#uid').val().lastIndexOf('/')+1, $('#uid').val().length);
 
 	inputUID=$('#event_calendar').val()+srcUID;
@@ -2282,145 +1781,145 @@ function enableAll()
 function disableAllTodo()
 {
 	disableAll();
-	return false;
-	var counter=0;
-	$('#ResourceCalDAVTODOList').children(':visible').each(function(i, e){
-		if($(e).hasClass('resourceCalDAVTODO_item') && $(e).find('input').prop('checked'))
-			counter++;
-	});
-	if(!counter)
-		return false;
 
-	if(!globalSettings.displayhiddenevents.value)
-	{
-		globalResourceRefreshNumberTodo++;
-		$('#CalendarLoaderTODO').children('.loaderInfo').text(localization[globalInterfaceLanguage].calendarLoader).parent().css('display','block');
-		var beforeScroll = $('#mainTODO').width()-$('#todoList').width();
-		$('#todoList').fullCalendar( 'removeEvents');
-		$('#todoList').fullCalendar( 'removeEventSources');
-		var afterScroll = $('#mainTODO').width()-$('#todoList').width();
-		rerenderTodo(beforeScroll!=afterScroll);
-	}
+	// var counter=0;
+	// $('#ResourceCalDAVTODOList').children(':visible').each(function(i, e){
+	// 	if($(e).hasClass('resourceCalDAVTODO_item') && $(e).find('input').prop('checked'))
+	// 		counter++;
+	// });
+	// if(!counter)
+	// 	return false;
 
-	for(var j=0;j<globalResourceCalDAVList.TodoCollections.length;j++)
-	{
-		if(globalResourceCalDAVList.TodoCollections[j].href!=undefined)
-		{
-			var uid=globalResourceCalDAVList.TodoCollections[j].uid;
-			var check=$('#ResourceCalDAVTODOList').find('[name^="'+uid+'"]');
-			if(check.prop('checked'))
-			{
-				var pos=globalVisibleCalDAVTODOCollections.indexOf(uid);
-				if(pos!=-1)
-					globalVisibleCalDAVTODOCollections.splice(pos, 1);
-				check.prop('checked', false);
-				if(globalSettings.displayhiddenevents.value)
-					hideCalendarTodos(uid);
-			}
-			collectionChBoxClick(check.get(0), '#'+check.parent().parent().attr('id'), '.resourceCalDAVTODO_header', '.resourceCalDAVTODO_item', null, false);
-		}
-		/*else
-		{
-			var check=$('#ResourceCalDAVTODOList').children().eq(globalResourceCalDAVList.TodoCollections[j].index+1).find('input');
-			if(check.prop('checked'))
-				check.prop('checked', false);
-		}*/
-	}
+	// if(!globalSettings.displayhiddenevents.value)
+	// {
+	// 	globalResourceRefreshNumberTodo++;
+	// 	$('#CalendarLoaderTODO').children('.loaderInfo').text(localization[globalInterfaceLanguage].calendarLoader).parent().css('display','block');
+	// 	var beforeScroll = $('#mainTODO').width()-$('#todoList').width();
+	// 	$('#todoList').fullCalendar( 'removeEvents');
+	// 	$('#todoList').fullCalendar( 'removeEventSources');
+	// 	var afterScroll = $('#mainTODO').width()-$('#todoList').width();
+	// 	rerenderTodo(beforeScroll!=afterScroll);
+	// }
 
-	if(!globalSettings.displayhiddenevents.value)
-	{
-		globalResourceRefreshNumberTodo--;
-		if(!globalResourceRefreshNumberTodo)
-			$('#CalendarLoaderTODO').css('display','none');
-	}
+	// for(var j=0;j<globalResourceCalDAVList.TodoCollections.length;j++)
+	// {
+	// 	if(globalResourceCalDAVList.TodoCollections[j].href!=undefined)
+	// 	{
+	// 		var uid=globalResourceCalDAVList.TodoCollections[j].uid;
+	// 		var check=$('#ResourceCalDAVTODOList').find('[name^="'+uid+'"]');
+	// 		if(check.prop('checked'))
+	// 		{
+	// 			var pos=globalVisibleCalDAVTODOCollections.indexOf(uid);
+	// 			if(pos!=-1)
+	// 				globalVisibleCalDAVTODOCollections.splice(pos, 1);
+	// 			check.prop('checked', false);
+	// 			if(globalSettings.displayhiddenevents.value)
+	// 				hideCalendarTodos(uid);
+	// 		}
+	// 		collectionChBoxClick(check.get(0), '#'+check.parent().parent().attr('id'), '.resourceCalDAVTODO_header', '.resourceCalDAVTODO_item', null, false);
+	// 	}
+	// 	/*else
+	// 	{
+	// 		var check=$('#ResourceCalDAVTODOList').children().eq(globalResourceCalDAVList.TodoCollections[j].index+1).find('input');
+	// 		if(check.prop('checked'))
+	// 			check.prop('checked', false);
+	// 	}*/
+	// }
+
+	// if(!globalSettings.displayhiddenevents.value)
+	// {
+	// 	globalResourceRefreshNumberTodo--;
+	// 	if(!globalResourceRefreshNumberTodo)
+	// 		$('#CalendarLoaderTODO').css('display','none');
+	// }
 }
 
 function enableAllTodo()
 {
 	enableAll();
-	return false;
-	var counter=0;
-	$('#ResourceCalDAVTODOList').children(':visible').each(function(i, e){
-		if($(e).hasClass('resourceCalDAVTODO_item') && !$(e).find('input').prop('checked'))
-			counter++;
-	});
-	if(!counter)
-		return false;
 
-	if(!globalSettings.displayhiddenevents.value)
-	{
-		globalResourceRefreshNumberTodo++;
-		$('#CalendarLoaderTODO').children('.loaderInfo').text(localization[globalInterfaceLanguage].calendarLoader).parent().css('display','block');
-	}
+	// var counter=0;
+	// $('#ResourceCalDAVTODOList').children(':visible').each(function(i, e){
+	// 	if($(e).hasClass('resourceCalDAVTODO_item') && !$(e).find('input').prop('checked'))
+	// 		counter++;
+	// });
+	// if(!counter)
+	// 	return false;
 
-	var beforeScroll = $('#mainTODO').width()-$('#todoList').width();
-	var rex = vCalendar.pre['accountUidParts'];
-	for(var j=0;j<globalResourceCalDAVList.TodoCollections.length;j++)
-	{
-		if(globalResourceCalDAVList.TodoCollections[j].href!=undefined)
-		{
-			var uid=globalResourceCalDAVList.TodoCollections[j].uid;
-			var check=$('#ResourceCalDAVTODOList').find('[name^="'+uid+'"]');
-			if(!check.prop('checked'))
-			{
-				check.prop('checked', true);
-				var pos=globalVisibleCalDAVTODOCollections.indexOf(uid);
-				if(pos==-1)
-				{
-					globalVisibleCalDAVTODOCollections[globalVisibleCalDAVTODOCollections.length]=uid;
-					if(globalSettings.displayhiddenevents.value)
-						showCalendarTodos(uid);
-					else
-					{
-						var bg = false;
-						var tmpUID = uid.match(rex);
-						var hrefUID='';
-						if(tmpUID!=null)
-							hrefUID = tmpUID[4];
-						var resource = getResourceByCollection(uid);
-						if(resource!=null && typeof resource.backgroundCalendars!='undefined' && resource.backgroundCalendars!=null && resource.backgroundCalendars!='')
-						{
-							var rbCalendars = '';
-							if(resource.backgroundCalendars instanceof Array)
-								rbCalendars=resource.backgroundCalendars;
-							else
-								rbCalendars = [resource.backgroundCalendars];
-							for(var k=0; k<rbCalendars.length;k++)
-							{
-								if (typeof rbCalendars[k]=='string')
-								{
-									var index = hrefUID.indexOf(rbCalendars[k]);
-									if(index!=-1)
-										if(hrefUID.length == (index+rbCalendars[k].length))
-											bg=true;
-								}
-								else if (typeof rbCalendars[k]=='object' && hrefUID.match(rbCalendars[k])!=null)
-									bg = true;
-							}
-						}
-						var collection = globalResourceCalDAVList.TodoCollections[j];
-						collection.fcSource = $('#todoList').fullCalendar('addEventSource', {events:globalEventList.displayTodosArray[collection.uid],backgroundColor:hexToRgba(collection.ecolor,0.9),borderColor:collection.ecolor});
-					}
-				}
-			}
-			collectionChBoxClick(check.get(0), '#'+check.parent().parent().attr('id'), '.resourceCalDAVTODO_header', '.resourceCalDAVTODO_item', null, false);
-		}
-		/*else
-		{
-			var check=$('#ResourceCalDAVTODOList').children().eq(globalResourceCalDAVList.TodoCollections[j].index+1).find('input');
-			if(!check.prop('checked'))
-				check.prop('checked', true);
-		}*/
-	}
+	// if(!globalSettings.displayhiddenevents.value)
+	// {
+	// 	globalResourceRefreshNumberTodo++;
+	// 	$('#CalendarLoaderTODO').children('.loaderInfo').text(localization[globalInterfaceLanguage].calendarLoader).parent().css('display','block');
+	// }
 
-	if(!globalSettings.displayhiddenevents.value)
-	{
-		var afterScroll = $('#mainTODO').width()-$('#todoList').width();
-		rerenderTodo(beforeScroll!=afterScroll);
-		globalResourceRefreshNumberTodo--;
-		if(!globalResourceRefreshNumberTodo)
-			$('#CalendarLoaderTODO').css('display','none');
-	}
+	// var beforeScroll = $('#mainTODO').width()-$('#todoList').width();
+	// var rex = vCalendar.pre['accountUidParts'];
+	// for(var j=0;j<globalResourceCalDAVList.TodoCollections.length;j++)
+	// {
+	// 	if(globalResourceCalDAVList.TodoCollections[j].href!=undefined)
+	// 	{
+	// 		var uid=globalResourceCalDAVList.TodoCollections[j].uid;
+	// 		var check=$('#ResourceCalDAVTODOList').find('[name^="'+uid+'"]');
+	// 		if(!check.prop('checked'))
+	// 		{
+	// 			check.prop('checked', true);
+	// 			var pos=globalVisibleCalDAVTODOCollections.indexOf(uid);
+	// 			if(pos==-1)
+	// 			{
+	// 				globalVisibleCalDAVTODOCollections[globalVisibleCalDAVTODOCollections.length]=uid;
+	// 				if(globalSettings.displayhiddenevents.value)
+	// 					showCalendarTodos(uid);
+	// 				else
+	// 				{
+	// 					var bg = false;
+	// 					var tmpUID = uid.match(rex);
+	// 					var hrefUID='';
+	// 					if(tmpUID!=null)
+	// 						hrefUID = tmpUID[4];
+	// 					var resource = getResourceByCollection(uid);
+	// 					if(resource!=null && typeof resource.backgroundCalendars!='undefined' && resource.backgroundCalendars!=null && resource.backgroundCalendars!='')
+	// 					{
+	// 						var rbCalendars = '';
+	// 						if(resource.backgroundCalendars instanceof Array)
+	// 							rbCalendars=resource.backgroundCalendars;
+	// 						else
+	// 							rbCalendars = [resource.backgroundCalendars];
+	// 						for(var k=0; k<rbCalendars.length;k++)
+	// 						{
+	// 							if (typeof rbCalendars[k]=='string')
+	// 							{
+	// 								var index = hrefUID.indexOf(rbCalendars[k]);
+	// 								if(index!=-1)
+	// 									if(hrefUID.length == (index+rbCalendars[k].length))
+	// 										bg=true;
+	// 							}
+	// 							else if (typeof rbCalendars[k]=='object' && hrefUID.match(rbCalendars[k])!=null)
+	// 								bg = true;
+	// 						}
+	// 					}
+	// 					var collection = globalResourceCalDAVList.TodoCollections[j];
+	// 					collection.fcSource = $('#todoList').fullCalendar('addEventSource', {events:globalEventList.displayTodosArray[collection.uid],backgroundColor:hexToRgba(collection.ecolor,0.9),borderColor:collection.ecolor});
+	// 				}
+	// 			}
+	// 		}
+	// 		collectionChBoxClick(check.get(0), '#'+check.parent().parent().attr('id'), '.resourceCalDAVTODO_header', '.resourceCalDAVTODO_item', null, false);
+	// 	}
+	// 	/*else
+	// 	{
+	// 		var check=$('#ResourceCalDAVTODOList').children().eq(globalResourceCalDAVList.TodoCollections[j].index+1).find('input');
+	// 		if(!check.prop('checked'))
+	// 			check.prop('checked', true);
+	// 	}*/
+	// }
+
+	// if(!globalSettings.displayhiddenevents.value)
+	// {
+	// 	var afterScroll = $('#mainTODO').width()-$('#todoList').width();
+	// 	rerenderTodo(beforeScroll!=afterScroll);
+	// 	globalResourceRefreshNumberTodo--;
+	// 	if(!globalResourceRefreshNumberTodo)
+	// 		$('#CalendarLoaderTODO').css('display','none');
+	// }
 }
 
 function disableResource(header)
@@ -3282,7 +2781,7 @@ function todoCheckClick(status, percent, calTodo)
 			if(stringUIDcurrent!=null)
 				stringUIDcurrent=stringUIDcurrent[0].match(vCalendar.pre['contentline_parse'])[4];
 			var rec_id='';
-			if(calTodo.type!='' && calTodo.rec_id=='' && typeof globalAppleSupport.nextDates[calTodo.id]!='undefined')
+			if(calTodo.type!='' && calTodo.rec_id=='' && (!globalSettings.appleremindersmode.value || typeof globalAppleSupport.nextDates[calTodo.id]!='undefined'))
 			{
 				if(calTodo.repeatStart!='' && calTodo.start)
 				{
@@ -3301,7 +2800,6 @@ function todoCheckClick(status, percent, calTodo)
 			}
 			else
 				rec_id=calTodo.rec_id;
-
 			var resultTodoObj = getRepeatTodoObject({
 				rid:calTodo.res_id,
 				uidTodo:calTodo.id,
@@ -3313,7 +2811,6 @@ function todoCheckClick(status, percent, calTodo)
 				deleteMode: false,
 				vCalendarText:vCalendarText
 			});
-
 			vCalendarText = resultTodoObj.vCalendarText;
 			var tzArray=resultTodoObj.tzArray;
 			var tzString=resultTodoObj.tzString;
@@ -3578,7 +3075,7 @@ function todoCheckClick(status, percent, calTodo)
 					var intOffset = valOffsetFrom.getSecondsFromOffset()*-1;
 					datetime_completed = new Date(datetime_completed.setSeconds(intOffset));
 				}
-				var newValue=$.fullCalendar.formatDate(datetime_completed, "yyyyMMdd'T'HHmmss")+(sel_option!='local' ? 'Z' : '');
+				var newValue=$.fullCalendar.formatDate(datetime_completed, "yyyyMMdd'T'HHmmss")+'Z';
 
 				process_elem=vCalendar.tplC['VTcontentline_COMPLETED'];
 				process_elem=process_elem.replace('##:::##group_wd##:::##', '');
@@ -3681,6 +3178,7 @@ function todoCheckClick(status, percent, calTodo)
 			var tmp=res.href.match(vCalendar.pre['hrefRex']);
 			var accountUID=tmp[1]+res.userAuth.userName+'@'+tmp[2];
 			CalDAVeditor_cleanup(id);
+
 			return putVcalendarToCollection(accountUID, calTodo.id, calTodo.etag, inputS, '','vtodo',true,false,fixedArr);
 		}
 	},globalTodoCheckTimeoutDelay);
@@ -5371,10 +4869,13 @@ function showEventPopup(e, event)
 	else
 		priority = localization[globalInterfaceLanguage].txtPriorityNone;
 
+	// prevent displaying of extremely long texts in the event preview box
+	var maxPreviewTextLength=512;
+
 	if(event.title=='')
 		$('#CalDavZAPPopup').find('[data-type="name"]').parent().css('display','none');
 	else
-		$('#CalDavZAPPopup').find('[data-type="name"]').text(event.title).parent().css('display','');
+		$('#CalDavZAPPopup').find('[data-type="name"]').text((event.title.length>maxPreviewTextLength ? event.title.substr(0, maxPreviewTextLength-4)+' ...' : event.title)).parent().css('display','');
 	if(event.location=='')
 		$('#CalDavZAPPopup').find('[data-type="location"]').parent().css('display','none');
 	else
@@ -5386,7 +4887,9 @@ function showEventPopup(e, event)
 	if(event.note=='')
 		$('#CalDavZAPPopup').find('[data-type="note"]').parent().css('display','none');
 	else
-		$('#CalDavZAPPopup').find('[data-type="note"]').text(event.note).parent().css('display','');
+		$('#CalDavZAPPopup').find('[data-type="note"]').text((event.note.length>maxPreviewTextLength ? event.note.substr(0, maxPreviewTextLength-4)+' ...' : event.note)).parent().css('display','');
+
+
 
 	$('#CalDavZAPPopup').find('[data-type="from"]').html(from);
 	$('#CalDavZAPPopup').find('[data-type="to"]').html(to);
@@ -5749,6 +5252,7 @@ function CardDAVUpdateMainLoader(inputCollection)
 		globalAddressbookList.renderContacs();
 		var rexo=new RegExp('^(https?://)([^@/]+(?:@[^@/]+)?)@(.*)');
 		if(!globalDefaultAddressbookCollectionActiveAll)
+		{
 			for(var i=0;i<globalSettings.activeaddressbookcollections.value.length;i++)
 			{
 				if(typeof globalCrossServerSettingsURL!='undefined'&&globalCrossServerSettingsURL!=null&globalCrossServerSettingsURL)
@@ -5768,7 +5272,10 @@ function CardDAVUpdateMainLoader(inputCollection)
 						$('#ResourceCardDAVList .resourceCardDAV input[data-id="'+uid+'"]').trigger('click');
 				}
 			}
-		else
+			if(globalSettings.activeaddressbookcollections.value.length>0 && $('#ResourceCardDAVList .resourceCardDAV input:checked').length==0)
+				globalDefaultAddressbookCollectionActiveAll=true;
+		}
+		if(globalDefaultAddressbookCollectionActiveAll)
 			for(var i=0;i<globalResourceCardDAVList.collections.length;i++)
 				if(globalResourceCardDAVList.collections[i].uid!=undefined && $('#ResourceCardDAVList .resourceCardDAV input[data-id="'+globalResourceCardDAVList.collections[i].uid+'"]:visible').length>0)
 						$('#ResourceCardDAVList input[data-id="'+globalResourceCardDAVList.collections[i].uid+'"]').trigger('click');
@@ -5825,7 +5332,6 @@ function localizeCardDAV()
 
 	// restore original templates
 	$('#ResourceCardDAVList').empty().append(globalOrigCardDAVListTemplate.clone());
-	globalRefABList.empty().append(globalOrigABListTemplate.clone());
 	abContactRef.empty().append(globalOrigVcardTemplate.clone());
 
 
@@ -5846,6 +5352,9 @@ function localizeCardDAV()
 	$('#showUnloadedAddressbooks').attr({title:capitalize(localization[globalInterfaceLanguage].txtEnabledAddressbooks),alt:capitalize(localization[globalInterfaceLanguage].txtEnabledAddressbooks)});
 	$('#loadUnloadedAddressbooks').val(localization[globalInterfaceLanguage].buttonSave);
 	$('#loadUnloadedAddressbooksCancel').val(localization[globalInterfaceLanguage].buttonCancel);
+
+	abContactRef.find('#photoBox').find('h1').text(localization[globalInterfaceLanguage].txtRemoteImage);
+	abContactRef.find('#photoURL').attr('placeholder',localization[globalInterfaceLanguage].pholderUrlVal);
 
 	abContactRef.find('[data-type="photo"]').text(localization[globalInterfaceLanguage].altPhoto);
 	abContactRef.find('[data-type="given"]').attr('placeholder',localization[globalInterfaceLanguage].pholderGiven);
@@ -5970,10 +5479,6 @@ function localizeCardDAV()
 	globalTranslCardDAVListHeader=globalTranslCardDAVListTemplate.find('.resourceCardDAV_header').clone();
 	globalTranslCardDAVListItem=globalTranslCardDAVListTemplate.find('.resourceCardDAV_item').clone();
 
-	globalTranslABListTemplate=$('#ABListTemplate').clone();
-	globalTranslABListHeader=globalTranslABListTemplate.find('.ablist_header').clone();
-	globalTranslABListItem=globalTranslABListTemplate.find('.ablist_item').clone();
-
 	globalTranslVcardTemplate=$('#vCardTemplate').contents().clone();
 
 	// CUSTOM PLACEHOLDER (initialization for the whole page)
@@ -6077,6 +5582,7 @@ function processEditorElements(inputEditorRef, processingType, inputIsReadonly, 
 	for(var i=0; i<typeList.length; i++)
 	{
 		var found_non_empty=0;
+		var empty = false;
 		tmp=tmp_ref.find(typeList[i].sel);
 
 		tmp.each(
@@ -6126,6 +5632,8 @@ function processEditorElements(inputEditorRef, processingType, inputIsReadonly, 
 				}
 				else	// 'show'
 				{
+					empty = empty || $(element).hasClass(cssElementNoDisplay);
+
 					$(element).removeClass(cssElementNoDisplay);
 					$(element).find('[data-type="\\%add"]').find('input[type="image"]').removeClass(cssElementNoDisplay);
 					$(element).find('[data-type="\\%del"]').find('input[type="image"]').removeClass(cssElementNoDisplay);
@@ -6143,6 +5651,20 @@ function processEditorElements(inputEditorRef, processingType, inputIsReadonly, 
 				}
 			}
 		);
+
+		if(processingType==='show' && !empty) {
+			if(typeList[i].sel==='[data-type="\\%address"]') {
+				tmp.each(function() {
+					var street = $(this).find('[data-addr-field="street"]');
+					if(street.val()) {
+						street.trigger('keyup.street');
+					}
+				});
+			}
+
+			if(typeof globalContactAutoExpand=='undefined' || globalContactAutoExpand!=false)
+				tmp.last().find('[data-type="\\%add"]').find('.op').trigger('click');
+		}
 
 		// set the visibility of the buttons
 		if(processingType=='hide')
@@ -6244,6 +5766,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 	globalRefVcardEditor=globalTranslVcardTemplate.clone();
 	// cleanup old data form address fields
 	globalAddressElementOldData={};
+
 	if(typeof(globalContactsExtEditorProcess)=='function')
 		globalContactsExtEditorProcess(globalRefVcardEditor, 'pre', null, inputIsCompany);
 
@@ -6267,12 +5790,24 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 	for(var i=0; i<tmp_arr.length; i++)
 	{
 		globalABEditorCounter[tmp_arr[i]]=1;	// restart id counters for editor objects
-		globalRefVcardEditor.find(tmp_arr[i]+' [data-type="\\%add"] input').data('customSelector', tmp_arr[i]).click(function(){add_element($(this).parent(), $(this).data('customSelector'), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]', globalABEditorCounter[$(this).data('customSelector')]++)});
-		globalRefVcardEditor.find(tmp_arr[i]+' [data-type="\\%del"] input').data('customSelector', tmp_arr[i]).click(function(){del_element($(this).parent(), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]')});
+		globalRefVcardEditor.find(tmp_arr[i]+' [data-type="\\%add"] input').data('customSelector', tmp_arr[i]).click(function(){add_element($(this).parent(), $(this).data('customSelector'), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]', globalABEditorCounter[$(this).data('customSelector')]++);checkContactFormScrollBar();});
+		globalRefVcardEditor.find(tmp_arr[i]+' [data-type="\\%del"] input').data('customSelector', tmp_arr[i]).click(function(){del_element($(this).parent(), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]');checkContactFormScrollBar();});
+		if(typeof globalContactAutoExpand=='undefined' || globalContactAutoExpand!=false)
+		{
+			globalRefVcardEditor.find(tmp_arr[i]+' input[type="text"]').bind('keyup', function() {
+				var el = $(this);
+				var row = el.closest('tr[data-type^="%"]');
+				var isLast = row.attr('data-type')!==row.next().attr('data-type');
+
+				if(isLast && el.val()) {
+					row.find('[data-type="\\%add"] input').trigger('click');
+				}
+			});
+		}
 		//globalRefVcardEditor.find(tmp_arr[i]).children().filter('[data-type="\\%add"]').click();
 	}
 	// one special thing for address
-	globalRefVcardEditor.find('[data-type="\\%address"] [data-type="country_type"]').change(function(){set_address_country(this); $(this).parent().find('[data-type="country_type"]').focus();});
+	globalRefVcardEditor.find('[data-type="\\%address"] [data-type="country_type"]').change(function(){set_address_country(this);checkContactFormScrollBar();});
 
 	var tmp=globalRefVcardEditor.find('[data-type="\\%address"]');
 	var tmp_select=tmp.find('[data-type="country_type"]').attr('data-autoselect');
@@ -6298,12 +5833,33 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 		event.originalEvent.dataTransfer.dropEffect='copy'; // explicitly show this is a copy
 	});
 
-	globalRefVcardEditor.find('.photo_div').bind('drop', function(event){
+	globalRefVcardEditor.find('.photo_div').bind('drop', function(event) {
 		process_image(event);
 	});
 
-	globalRefVcardEditor.find('#upload_file').bind('change', function(event){
+	globalRefVcardEditor.find('#upload_file').bind('change', function(event) {
 		process_image(event);
+	});
+
+	globalRefVcardEditor.find('#photoBoxButton').bind('click', function(event) {
+		var photo = $('#photoURL').val();
+		var newImg = new Image();
+		newImg.src = photo;
+		newImg.onload = function() {
+			// show the image "delete" button
+			$('#reset_img').css('display', 'inline');
+			// remove the template related to previous image (start with clean one)
+			vCard.tplM['contentline_PHOTO'][0]=null;
+
+			$('#photoURLHidden').val($('#photoURL').val());
+
+			loadImage(this);
+			hidePhotoBox();
+		};
+		newImg.onerror = function() {
+			$('#photoURL').addClass('invalid');
+			$('#photoBoxContent').find('[data-type="invalid"]').css('display', 'inline');
+		};
 	});
 
 	// initialize tagsinput
@@ -6334,6 +5890,8 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 						xList.splice(i, 1);
 			}
 			$('#tags_tag').autocomplete('option', 'source', xList);
+
+			checkContactFormScrollBar();
 		}
 	});
 
@@ -6356,7 +5914,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 	globalLastScrollPos=0;	// move to the main.js
 
 	globalRefABList.scroll(function(e){
-		globalRefABList.children('.ablist_header:visible').each(function(index, element){
+		globalRefABListTable.children('.ablist_header:visible').each(function(index, element){
 			var headerWidth=$(element).outerWidth();
 			var headerHeight=$(element).outerHeight();
 			var floating_elem=$('#SystemCardDavMATE > .ablist_header');
@@ -6376,7 +5934,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 						floating_elem.remove();
 
 						// set the opacity back to standard value (item is invisible scrolled above the ABlist top)
-						globalRefABList.children('.ablist_header').each(function(index,element){
+						globalRefABListTable.children('.ablist_header').each(function(index,element){
 							if($(element).css('opacity')=='0'){$(element).css('opacity',0.85);}
 						});
 
@@ -6410,7 +5968,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 							floating_elem.remove();
 
 							// set the opacity back to standard value (item is invisible scrolled above the ABlist top)
-							globalRefABList.children('.ablist_header').each(function(index,element){
+							globalRefABListTable.children('.ablist_header').each(function(index,element){
 								if($(element).css('opacity')=='0'){$(element).css('opacity',0.85);}
 							});
 
@@ -6435,13 +5993,14 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 	// CUSTOM PLACEHOLDER (initialization for the editor)
 	globalRefVcardEditor.find('input[placeholder],textarea[placeholder]').placeholder();
 	// enable autosize for textarea elements
-	globalRefVcardEditor.find('textarea[data-type="value"]').autosize({defaultStyles: {height: '64', overflow: '', 'overflow-y': '', 'word-wrap': '', resize: 'none'}});
+	globalRefVcardEditor.find('textarea[data-type="value"]').autosize({defaultStyles: {height: '64', overflow: '', 'overflow-y': '', 'word-wrap': '', resize: 'none'}, callback: function(){checkContactFormScrollBar();}});
 
 	if(inputLoadEmpty==true)
 		$('#EditorBox').fadeTo(0, 1);	/* 0 = no animation */
 
 	return globalRefVcardEditor;
 }
+
 
 function animate_message(messageSelector, messageTextSelector, duration, operation)
 {
@@ -6496,14 +6055,25 @@ function set_address_country(inputSelectedAddressObj)
 	var addressElement=$(inputSelectedAddressObj).closest('[data-type="\\%address"]');
 
 	// store the previous data + cleanup the data-addr-fields, placeholders and values
+	globalAddressElementOldData = {};
+
 	addressElement.find('[data-addr-fid]').each(
 		function(index, element)
 		{
 			var tmp=$(element).find('input');
 			var tmp_field_name=tmp.attr('data-addr-field');
 
-			if(tmp_field_name!=undefined && tmp_field_name!='')
-				globalAddressElementOldData[tmp_field_name]={'value': tmp.val(), 'data-match': tmp.attr('data-match')};
+			if(tmp_field_name!=undefined && tmp_field_name!='') {
+				if(!globalAddressElementOldData.hasOwnProperty(tmp_field_name)) {
+					globalAddressElementOldData[tmp_field_name] = [];
+				}
+
+				globalAddressElementOldData[tmp_field_name].push({'value': tmp.val(), 'data-match': tmp.attr('data-match')});
+			}
+
+			if(tmp_field_name==='street') {
+				tmp.unbind('keyup.street');
+			}
 
 			tmp.attr({'data-addr-field': '', 'data-match': '', 'placeholder': ''}).unplaceholder();	// REMOVE CUSTOM PLACEHOLDER
 			tmp.val('');
@@ -6514,6 +6084,9 @@ function set_address_country(inputSelectedAddressObj)
 		}
 	);
 
+	addressElement.find('[data-group="street"]').closest('tr[data-type="container"]').not(':first').remove();
+	addressElement.find('[data-group]').removeAttr('data-group');
+
 	if(addressTypes[selectedCountry]!=undefined)
 		for(var i=1;i<addressTypes[selectedCountry].length;i++)
 		{
@@ -6523,9 +6096,28 @@ function set_address_country(inputSelectedAddressObj)
 				tmp.attr('data-addr-field',addressTypes[selectedCountry][i]['data-addr-field']);
 				tmp.attr('placeholder',addressTypes[selectedCountry][i]['placeholder']);
 
+				if(addressTypes[selectedCountry][i]['data-addr-field']==='street') {
+					tmp.closest('tr[data-type="container"]').attr('data-group', 'street');
+
+					tmp.bind('keyup.street', function() {
+						var el = $(this);
+						var row = el.closest('tr[data-type="container"]');
+						var isLast = row.attr('data-group')!==row.next().attr('data-group');
+
+						if(isLast && el.val()) {
+							row.clone(true).insertAfter(row).find('input').val('');
+						}
+					});
+				}
+
 				// here we restore the data from globalAddressElementOldData variable
-				if(globalAddressElementOldData[addressTypes[selectedCountry][i]['data-addr-field']]!=undefined)
-					tmp.val(globalAddressElementOldData[addressTypes[selectedCountry][i]['data-addr-field']]['value']);
+				if(globalAddressElementOldData.hasOwnProperty(addressTypes[selectedCountry][i]['data-addr-field'])) {
+					for(var j=0; j<globalAddressElementOldData[addressTypes[selectedCountry][i]['data-addr-field']].length; j++) {
+						tmp = addressElement.find('[data-addr-fid="'+jqueryEscapeSelector(addressTypes[selectedCountry][i]['fid'])+'"]').find('input').last();
+						tmp.val(globalAddressElementOldData[addressTypes[selectedCountry][i]['data-addr-field']][j]['value']);
+						tmp.trigger('keyup.street');
+					};
+				}
 			}
 			else if(addressTypes[selectedCountry][i]['type']=='country')
 			{
@@ -6609,7 +6201,7 @@ function add_element(inputElementID, inputParentSelector, newElementSelector, in
 	tmpRef.find('input[data-type="value"][placeholder], input[data-type="date_value"][placeholder],textarea[data-type="value"][placeholder]').placeholder();
 
 	// enable autosize for textarea elements
-	tmpRef.find('textarea[data-type="value"]').autosize({defaultStyles: {height: '64', overflow: '', 'overflow-y': '', 'word-wrap': '', resize: 'none'}});
+	tmpRef.find('textarea[data-type="value"]').autosize({defaultStyles: {height: '64', overflow: '', 'overflow-y': '', 'word-wrap': '', resize: 'none'}, callback: function(){checkContactFormScrollBar();}});
 
 	//bind datepicker
 	if(tmpRef.find('input[data-type="date_value"]').hasClass('hasDatepicker'))
@@ -6623,11 +6215,23 @@ function add_element(inputElementID, inputParentSelector, newElementSelector, in
 	if(tmp_arr.indexOf(inputParentSelector)!=-1)
 	{
 
-		tmpRef.find('[data-type="\\%add"] input').data('customSelector', inputParentSelector).click(function(){add_element($(this).parent(), $(this).data('customSelector'), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]', globalABEditorCounter[$(this).data('customSelector')]++)});
-		tmpRef.find('[data-type="\\%del"] input').data('customSelector', inputParentSelector).click(function(){del_element($(this).parent(), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]')});
+		tmpRef.find('[data-type="\\%add"] input').data('customSelector', inputParentSelector).click(function(){add_element($(this).parent(), $(this).data('customSelector'), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]', globalABEditorCounter[$(this).data('customSelector')]++);checkContactFormScrollBar();});
+		tmpRef.find('[data-type="\\%del"] input').data('customSelector', inputParentSelector).click(function(){del_element($(this).parent(), $(this).data('customSelector'), '[data-type="\\%add"]','[data-type="\\%del"]');checkContactFormScrollBar();});
+		if(typeof globalContactAutoExpand=='undefined' || globalContactAutoExpand!=false)
+		{
+			tmpRef.find('input[type="text"]').bind('keyup', function() {
+				var el = $(this);
+				var row = el.closest('tr[data-type^="%"]');
+				var isLast = row.attr('data-type')!==row.next().attr('data-type');
+
+				if(isLast && el.val()) {
+					row.find('[data-type="\\%add"] input').trigger('click');
+				}
+			});
+		}
 		// one special thing for address
 		if(inputParentSelector=='[data-type="\\%address"]' && tmpRef.attr('data-type')=='%address')
-			tmpRef.find('[data-type="country_type"]').change(function(){set_address_country(this); $(this).parent().find('[data-type="country_type"]').focus();});
+			tmpRef.find('[data-type="country_type"]').change(function(){set_address_country(this);checkContactFormScrollBar();});
 	}
 
 	if(inputParentSelector=='[data-type="\\%address"]')
@@ -6715,6 +6319,8 @@ function process_image(event)
 		reader.readAsDataURL(files[i]);
 		break; // we handle only the first picture here ...
 	}
+
+	$('#photoURL, #photoURLHidden').val('');
 }
 /* END image manipulation */
 
@@ -6725,6 +6331,7 @@ function hideNotVisibleMessage()
 	animate_message('#ABInMessageEditBox', '#ABInMessageTextEditBox', 0, '-=');
 	$('#ABInMessageEditBox').css('display','');
 }
+
 function initSearchCardDav()
 {
 	if(globalQs==null)
@@ -6760,7 +6367,7 @@ function initSearchCardDav()
 //				globalAddressbookList.applyABFilter(globalRefAddContact.attr('data-filter-url'),false);
 
 	// maybe useful for somebody
-	//			if((selected_contact=globalRefABList.find('.ablist_item_selected')).length==1)
+	//			if((selected_contact=globalRefABListTable.find('.ablist_item_selected')).length==1)
 	//				globalRefABList.scrollTop(globalRefABList.scrollTop()+selected_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
 			}
 		});
@@ -6786,7 +6393,7 @@ function initKbAddrNavigation()
 		{
 			// 37 = left, 38 = up, 39 = right, 40 = down
 			var selected_contact=null, next_contact=null;
-			if((selected_contact=globalRefABList.find('.ablist_item_selected')).length==1)
+			if((selected_contact=globalRefABListTable.find('.ablist_item_selected')).length==1)
 			{
 				if(event.keyCode == 38 && (next_contact=selected_contact.prevAll('.ablist_item').filter(':visible').first()).attr('data-id')!=undefined || event.keyCode == 40 && (next_contact=selected_contact.nextAll('.ablist_item').filter(':visible').first()).attr('data-id')!=undefined)
 					globalAddressbookList.loadContactByUID(next_contact.attr('data-id'));
@@ -6811,27 +6418,29 @@ function initKbAddrNavigation()
 		{
 			// 37 = left, 38 = up, 39 = right, 40 = down
 			var selected_contact=null, next_contact=null;
-			if((selected_contact=globalRefABList.find('.ablist_item_selected')).length==1)
+			if((selected_contact=globalRefABListTable.find('.ablist_item_selected')).length==1)
 			{
+				var wrapperRef = $('.ablist_table_wrapper');
+
 				if(event.keyCode == 38 && (next_contact=selected_contact.prevAll('.ablist_item').filter(':visible').first()).attr('data-id')!=undefined || event.keyCode == 40 &&  (next_contact=selected_contact.nextAll('.ablist_item').filter(':visible').first()).attr('data-id')!=undefined)
 				{
 					switch(event.keyCode)
 					{
 						case 38:
 							event.preventDefault();
-							if(globalRefABList.scrollTop()>globalRefABList.scrollTop()+next_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate)
-								globalRefABList.scrollTop(globalRefABList.scrollTop()+next_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
-							else if(globalRefABList.scrollTop()<globalRefABList.scrollTop()+next_contact.offset().top+next_contact.height()-globalRefABList.offset().top-globalRefABList.height()*(1-globalKBNavigationPaddingRate))	/* contact invisible (scrollbar moved) */
-								globalRefABList.scrollTop(globalRefABList.scrollTop()+next_contact.offset().top+next_contact.height()-globalRefABList.offset().top-globalRefABList.height()*(1-globalKBNavigationPaddingRate));
+							if(wrapperRef.scrollTop()>wrapperRef.scrollTop()+next_contact.offset().top-wrapperRef.offset().top-wrapperRef.height()*globalKBNavigationPaddingRate)
+								wrapperRef.scrollTop(wrapperRef.scrollTop()+next_contact.offset().top-wrapperRef.offset().top-wrapperRef.height()*globalKBNavigationPaddingRate);
+							else if(wrapperRef.scrollTop()<wrapperRef.scrollTop()+next_contact.offset().top+next_contact.height()-wrapperRef.offset().top-wrapperRef.height()*(1-globalKBNavigationPaddingRate))	/* contact invisible (scrollbar moved) */
+								wrapperRef.scrollTop(wrapperRef.scrollTop()+next_contact.offset().top+next_contact.height()-wrapperRef.offset().top-wrapperRef.height()*(1-globalKBNavigationPaddingRate));
 							else
 								return false;
 							break;
 						case 40:
 							event.preventDefault();
-							if(globalRefABList.scrollTop()<globalRefABList.scrollTop()+next_contact.offset().top+next_contact.height()-globalRefABList.offset().top-globalRefABList.height()*(1-globalKBNavigationPaddingRate))	/* contact invisible (scrollbar moved) */
-								globalRefABList.scrollTop(globalRefABList.scrollTop()+next_contact.offset().top+next_contact.height()-globalRefABList.offset().top-globalRefABList.height()*(1-globalKBNavigationPaddingRate));
-							else if(globalRefABList.scrollTop()>globalRefABList.scrollTop()+next_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate)
-								globalRefABList.scrollTop(globalRefABList.scrollTop()+next_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
+							if(wrapperRef.scrollTop()<wrapperRef.scrollTop()+next_contact.offset().top+next_contact.height()-wrapperRef.offset().top-wrapperRef.height()*(1-globalKBNavigationPaddingRate))	/* contact invisible (scrollbar moved) */
+								wrapperRef.scrollTop(wrapperRef.scrollTop()+next_contact.offset().top+next_contact.height()-wrapperRef.offset().top-wrapperRef.height()*(1-globalKBNavigationPaddingRate));
+							else if(wrapperRef.scrollTop()>wrapperRef.scrollTop()+next_contact.offset().top-wrapperRef.offset().top-wrapperRef.height()*globalKBNavigationPaddingRate)
+								wrapperRef.scrollTop(wrapperRef.scrollTop()+next_contact.offset().top-wrapperRef.offset().top-wrapperRef.height()*globalKBNavigationPaddingRate);
 							else
 								return false;
 							break;
@@ -6844,10 +6453,10 @@ function initKbAddrNavigation()
 					switch(event.keyCode)
 					{
 						case 38:
-							globalRefABList.scrollTop(0);
+							wrapperRef.scrollTop(0);
 							break;
 						case 40:
-							globalRefABList.scrollTop(globalRefABList.prop('scrollHeight'));
+							wrapperRef.scrollTop(wrapperRef.prop('scrollHeight'));
 							break;
 						default:
 							break;
@@ -6956,6 +6565,10 @@ function initDatePicker(inputObject)
 				globalTmpTimePickerHackTime[index]=d.getTime();
 
 				inputObject.focus();
+
+				if(inputObject.closest('tr').attr('data-attr-name')==='X-ABDATE') {
+					inputObject.trigger('keyup');
+				}
 			}
 		});
 
@@ -7040,6 +6653,36 @@ function checkForVcardGroups(contactUID)
 				select_elem.text(localization[globalInterfaceLanguage].txtVcardGroupsTextSingle.replace('%coll%',globalResourceCardDAVList.getCollectionByUID(collUID).displayvalue));
 		}
 	}
+}
+
+function checkContactFormScrollBar()
+{
+	var baseWidth = 582;
+	var scrollWidth = $('#EditorBox').length ? $('#ABContact').outerWidth() - $('#EditorBox').outerWidth() : 0;
+	var previousWidth = parseInt($('#ABList').css('right'), 10);
+	var newWidth = baseWidth+scrollWidth;
+
+	if(previousWidth===newWidth)
+		return true;
+
+	$('.collection_d, #SearchBox, #ABList').css('right', newWidth);
+	$('#ABListOverlay').css('right', newWidth+1);
+	$('.contact_d, #ABMessage, #ABContactOverlay').width(newWidth);
+	$('#ABContactColor').css('right', newWidth-3);
+	$('#ABContact').width(newWidth-3);
+
+	var columnLengths = [];
+	for(var i=0; i<getDataColumnCount(); i++) {
+		columnLengths.push([]);
+	}
+
+	globalRefABListTable.children('.ablist_item:visible').each(function() {
+		$(this).children().slice(globalFixedContactDataColumnsCount).each(function(ind) {
+			columnLengths[ind].push($(this).text().length);
+		});
+	});
+
+	setDataColumnsWidth(columnLengths);
 }
 
 function extendDestSelect(selGroup)
@@ -7210,6 +6853,337 @@ $(document).on("mouseover", "#vCardEditor .ablist_item", function() {
 	}
 });
 */
+
+function setDataColumnsWidth(cache) {
+	if(!globalRefABListTableCols && !globalRefABListInnerTableCols) {
+		return true;
+	}
+
+	// remove gutter
+	$('.ablist_table_gutter').remove();
+
+	// clear old column widths
+	globalRefABListTableCols.width('');
+	globalRefABListInnerTableCols.width('');
+
+	// use cached column values to compute new column widths
+	var characterWidth = 9; // gross approximation
+	var lastColumn = null;
+	var lastInnerColumn = null;
+	var scrollWidth = $('.ablist_table_wrapper').innerWidth() - globalRefABListTable.outerWidth();
+	var reservedWidth = 0;
+	globalRefABListTable.children('.ablist_item').first().children().slice(0, globalFixedContactDataColumnsCount).each(function() {
+		reservedWidth += $(this).width();
+	});
+	var availableWidth;
+	var maxWidth;
+	availableWidth = maxWidth = globalRefABList.innerWidth() - reservedWidth - scrollWidth;
+
+	cache.every(function(lengths, index) {
+		// var maxLength = Math.max.apply(null, lengths);
+		lengths.sort(function(a, b) {
+			return a - b;
+		});
+
+		var maxLength = lengths[Math.max(Math.min(Math.ceil(lengths.length * globalContactDataMinVisiblePercentage), lengths.length) - 1, 0)];
+		var column = globalRefABListTableCols.eq(index + globalFixedContactDataColumnsCount);
+		var innerColumn = globalRefABListInnerTableCols.eq(index + globalFixedContactDataColumnsCount);
+		var columnWidth = Math.max(maxLength * characterWidth, getDataColumnMinWidthAtIndex(index));
+
+		// exit early if there is not enough space for the column
+		if(columnWidth > availableWidth) {
+			// if exiting at the very first column, mark it as the last visible one anyway
+			// this will ensure that it gets to occupy what width there is available later on
+			if(!lastColumn) {
+				lastColumn = column;
+			}
+			if(!lastInnerColumn) {
+				lastInnerColumn = innerColumn;
+			}
+
+			return false;
+		}
+
+		// dont show column if no data are present
+		if(columnWidth && lengths[lengths.length - 1]>0) {
+			lastColumn = column;
+			lastInnerColumn = innerColumn;
+			availableWidth -= columnWidth;
+			column.width(columnWidth);
+			innerColumn.width(columnWidth);
+		}
+
+		return true;
+	});
+
+	// set the last visible column to occupy the rest of the available table width
+	if(lastColumn && lastInnerColumn) {
+		lastColumn.width(lastColumn.width() + availableWidth);
+		lastInnerColumn.width(lastInnerColumn.width() + availableWidth);
+	}
+
+	// if scrollbar present, create gutter
+	if(scrollWidth) {
+		$('<col class="ablist_table_gutter">').width(scrollWidth).insertAfter(lastColumn);
+		$('<th class="ablist_table_gutter">').insertAfter($('.ablist_table_header').children().eq(lastColumn.index()));
+	}
+}
+
+function getDataColumnCount() {
+	return globalSettings.collectiondisplay.value.length;
+}
+
+function isDataColumnDefined(column) {
+	var re = RegExp('(?:^|[^\\\\]){'+column+'(?:\\[.*?\\])*'+'}', 'i');
+
+	return globalSettings.collectiondisplay.value.some(function(col) {
+		if(col.hasOwnProperty('value')) {
+			var values = col.value;
+
+			if($.isPlainObject(values)) {
+				return values.company.some(function(value) {
+					return re.test(value)
+				}) || values.personal.some(function(value) {
+					return re.test(value)
+				});
+			}
+
+			return values.some(function(value) {
+				return re.test(value)
+			});
+		}
+
+		return false;
+	});
+}
+
+function getContactDataColumns(isCompany) {
+	return $.map(globalSettings.collectiondisplay.value, function(col) {
+		var value = col.value;
+
+		if($.isPlainObject(value)) {
+			if(isCompany && value.hasOwnProperty('company')) {
+				return [value.company];
+			}
+			if(!isCompany && value.hasOwnProperty('personal')) {
+				return [value.personal];
+			}
+		}
+
+		return [value];
+	});
+}
+
+function getDataColumnLabelAtIndex(index) {
+	if(globalSettings.collectiondisplay.value[index].hasOwnProperty('label')) {
+		var label = globalSettings.collectiondisplay.value[index].label;
+
+		if($.isPlainObject(label)) {
+			return getDataColumnLabel(label[globalInterfaceLanguage] || '');
+		}
+		else {
+			return getDataColumnLabel(label);
+		}
+	}
+}
+
+function getDataColumnLabel(formatString) {
+	var result = '';
+	var variableParts = null;
+	var re = RegExp('(?:^|[^\\\\])({(.*?[^\\\\])})');
+
+	while(variableParts = formatString.match(re)) {
+		var value = localization[globalInterfaceLanguage][globalContactDataColumnLabelVars[variableParts[2]]] || '';
+		formatString = formatString.replace(variableParts[1], value);
+	}
+
+	return formatString;
+}
+
+function getDataColumnMinWidthAtIndex(index) {
+	return 100;
+}
+
+function setContactDataColumn(contact, column, value, filterData) {
+	var column = column.toUpperCase();
+
+	if(globalContactDataColumnDefs.hasOwnProperty(column) && value) {
+		var property = globalContactDataColumnDefs[column].property;
+
+		if(!contact.hasOwnProperty(property)) {
+			contact[property] = [];
+		}
+
+		var data = {};
+
+		for(var name in filterData) {
+			var filterProperty = globalContactDataColumnDefs[column].filterProperities[name];
+			data[filterProperty] = filterData[name];
+		}
+
+		if($.isArray(value)) {
+			value = value.join(', ');
+		}
+		data.value = value;
+
+		contact[property].push(data);
+	}
+}
+
+function getContactDataColumn(contact, variables) {
+	var result = '';
+	var variableParts = null;
+	var re = RegExp('(?:^|[^\\\\])({(.*?[^\\\\])})');
+
+	variables.forEach(function(formatString) {
+		var matched = false;
+
+		while(variableParts = formatString.match(re)) {
+			var value = getContactDataColumnVariable(contact, variableParts[2]);
+			formatString = formatString.replace(variableParts[1], value);
+			matched = matched || value!=='';
+		}
+
+		if(matched) {
+			 result += formatString;
+		}
+	});
+
+	return result;
+}
+
+function getContactDataColumnVariable(contact, variable) {
+	var parts = variable.match(/^(.*?)(\[.*\])*$/);
+	var attr = parts[1].toUpperCase();
+
+	if(parts && attr && globalContactDataColumnDefs.hasOwnProperty(attr)) {
+		var property = globalContactDataColumnDefs[attr].property;
+
+		if(contact.hasOwnProperty(property)) {
+			var re = RegExp('\\[(.*?[^\\\\])\\]');
+			var numeral = 0;
+			var filterStr = parts[2] ? parts[2].toUpperCase() : '';
+			var filters = [];
+			var matches = contact[property];
+
+			while(filterStr) {
+				var match = filterStr.match(re);
+
+				if(match===null) {
+					break;
+				}
+
+				filters.push(match[1].replaceAll('\\[', '[').replaceAll('\\]', ']'));
+				filterStr = filterStr.replace(match[0], '');
+			}
+
+			filters.forEach(function(filterEl) {
+				if(filterEl[0]===':') {
+					numeral = parseInt(filterEl.slice(1), 10);
+				}
+				else {
+					var filterParts = filterEl.splitCustom('=');
+					var filterType = filterParts[0];
+					var filterValue = filterParts[1];
+
+					if(filterType && filterValue && globalContactDataColumnDefs[attr].hasOwnProperty('filterProperities') && globalContactDataColumnDefs[attr].filterProperities.hasOwnProperty(filterType)) {
+						var filterProperty = globalContactDataColumnDefs[attr].filterProperities[filterType];
+
+						matches = matches.filter(function(matchEl) {
+							return matchEl[filterProperty].indexOf(filterValue)>-1;
+						});
+					}
+				}
+			});
+
+			if(!isNaN(numeral) && numeral>-1 && numeral<matches.length) {
+				return matches[numeral].value;
+			}
+		}
+	}
+
+	return '';
+}
+
+function getParamsFromContentlineParse(vcard, parsed, primaryParam, customParam, dataTypeRegister, preserveCase) {
+	var params = [];
+
+	if(primaryParam && parsed[3]) {
+		var parsed_paramArr = vcardSplitValue(parsed[3], ';');
+
+		parsed_paramArr.forEach(function(el) {
+			if(el) {
+				var elParts = el.split('=');
+
+				if(elParts[0].toUpperCase()===primaryParam) {
+					var val = elParts[1];
+
+					if(!preserveCase) {
+						val = val.toUpperCase();
+					}
+
+					params.push(humanizeVcardDataTypes(dataTypeRegister, val));
+				}
+			}
+		});
+	}
+	if(customParam && parsed[1]) {
+		var vcard_element_related = null;
+		var re = RegExp('\r\n'+parsed[1].replace('.','\\.'+customParam+':(.*)')+'\r\n', 'im');
+		while((vcard_element_related = vcard.match(re))!=null) {
+			var val = vcard_element_related[1];
+
+			if(!preserveCase) {
+				val = val.toUpperCase();
+			}
+
+			params.push(humanizeVcardDataTypes(dataTypeRegister, vcardUnescapeValue(val)));
+			vcard = vcard.replace(vcard_element_related[0], '\r\n');
+		}
+	}
+
+	return params;
+}
+
+function humanizeVcardDataTypes(register, type) {
+	if(register && dataTypes[register].hasOwnProperty(type.toLowerCase())) {
+		matched = type.match(/^_\$!<(.*)>!\$_$/i);
+
+		if(matched) {
+			return matched[1];
+		}
+	}
+
+	return type;
+}
+
+function showPhotoBox(e) {
+	if($('#photoBox').is(':visible'))
+		hidePhotoBox();
+	else
+	{
+		e.stopPropagation();
+
+		$('#photoArrow, #photoBox').css('display', 'block');
+		$('#photoURL').focus();
+
+		$('html').bind('click.photo', function(e) {
+			if(!$.contains(document.getElementById('photoBox'), e.target)) {
+				hidePhotoBox();
+			}
+		});
+	}
+}
+
+function hidePhotoBox() {
+	$('#photoURL').val($('#photoURLHidden').val());
+	$('#photoBoxContent').find('[data-type="invalid"]').css('display', 'none');
+	$('#photoURL').removeClass('invalid');
+
+	$('#photoBox').css('display','none');
+	$('#photoArrow').css('display','none');
+	$('html').unbind('click.photo');
+}
 // reorder countries according to localization (returns array becaouse object are unsorted according to ECMA)
 function sortCountries(obj)
 {

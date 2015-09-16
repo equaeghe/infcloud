@@ -168,11 +168,11 @@ body, input, select, textarea
 .collection_d
 {
 	position: absolute;
-	top: 0px;
+	top: 0;
 	left: 225px;
+	right: 582px;
 	border-right: 1px solid;
 	border-right-color: #c0c0c0;
-	width: 250px;
 	height: 24px;
 	background: #f0f0f0;
 	color: #404040;
@@ -205,9 +205,9 @@ body, input, select, textarea
 .contact_d
 {
 	position: absolute;
-	top: 0px;
-	left: 476px;
-	right: 0px;
+	top: 0;
+	right: 0;
+	width: 582px;
 	height: 24px;
 	background: #f0f0f0;
 	color: #404040;
@@ -241,9 +241,9 @@ body, input, select, textarea
 	display: block;
 	top: 24px;
 	left: 225px;
+	right: 582px;
 	border-right: 1px solid;
 	border-right-color: #c0c0c0;
-	width: 250px;
 	overflow: hidden;
 	background: #ffffff;
 	z-index: 2;	/* for floating headers */
@@ -263,11 +263,11 @@ body, input, select, textarea
 	position: absolute;
 	top: 3px;
 	left: 31px;
-	width: 192px;
+	right: 27px;
 }
 #SearchBox *> input[data-type=search]
 {
-	width: 192px;
+	width: 100%;
 	background-color: #ffffff;
 }
 
@@ -277,12 +277,11 @@ body, input, select, textarea
 	display: block;
 	top: 50px;	/* search support */
 	left: 225px;
+	right: 582px;
+	bottom: 0;
 	border-right: 1px solid;
 	border-right-color: #c0c0c0;
-	bottom: 0px;
-	width: 250px;
-	overflow: auto;
-	overflow-x: hidden;
+	overflow: hidden;
 	background: #ffffff;
 	cursor: default;
 
@@ -294,10 +293,10 @@ body, input, select, textarea
 #ABListOverlay
 {
 	position: absolute;
-	top: 0px;
+	top: 0;
 	left: 225px;
-	bottom: 0px;
-	width: 250px;
+	right: 583px;
+	bottom: 0;
 	overflow: hidden;
 	background: #ffffff;
 	display: none;
@@ -317,12 +316,12 @@ body, input, select, textarea
 
 #ABContact
 {
-	display: block;
 	position: absolute;
 	top: 25px;
-	left: 479px;
-	right: 0px;
-	bottom: 0px;
+	right: 0;
+	bottom: 0;
+	display: block;
+	width: 579px;
 	padding-bottom: 8px;
 	overflow: auto;
 	overflow-x: hidden;
@@ -342,7 +341,7 @@ body, input, select, textarea
 	display: block;
 	top: 25px;
 	bottom: 0;
-	left: 476px;
+	right: 579px;
 	width: 3px;
 	cursor: default;
 
@@ -355,9 +354,9 @@ body, input, select, textarea
 {
 	position: absolute;
 	top: 24px;
-	left: 476px;
-	right: 0px;
-	bottom: 0px;
+	right: 0;
+	bottom: 0;
+	width: 582px;
 	overflow: hidden;
 	background: #ffffff;
 	display: none;
@@ -1017,16 +1016,16 @@ textarea[readonly].safari_hack
 {
 	position: absolute;
 	top: 24px;
-	left: 476px;
-	right: 0px;
+	right: 0;
+	display: block;
+	width: 582px;
+	height: 0;
 	z-index: 20;
 
 	background: #ffffff;
 	border-bottom: 1px solid;
 	border-bottom-color: #c0c0c0;
 	border-top: 0px;
-	display: block;
-	height: 0px;
 	overflow: hidden;
 	cursor: default;
 
@@ -1391,82 +1390,88 @@ input.non_editable
 	background-image: url(../images/read_only_w.svg) !important;
 }
 
-.ablist_header
+#ABListTable, #ABListTableInner
 {
-	position: relative;
+	width: 100%;
+	table-layout: fixed;
+}
+
+.ablist_table_header
+{
+	border-bottom: 1px solid #c0c0c0;
+}
+
+.ablist_table_header th
+{
+	font-weight: 500;
+	font-size: 0.9em;
+	border-right: 1px solid #f0f0f0;
 	overflow: hidden;
-	left: 0px;
-	top: 0px;
-	box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	width: 100%;
-	bottom: auto;
-	height: 18px;
-	line-height: 18px;
-	color: #404040;
-	cursor: default;
-	padding-left: 10px;
-	padding-right: 8px;
-	font-size: 0.9em;
-	display: block;
-	background: #f0f0f0;
+}
 
-	border-top: 1px solid;
-	border-top-color: #f0f0f0;
-	border-bottom: 1px solid;
-	border-bottom-color: #f0f0f0;
+.ablist_table_container > td
+{
+	padding: 0 !important;
+}
+
+.ablist_table_wrapper
+{
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.ablist_column_color
+{
+	width: 6px;
+}
+
+.ablist_header
+{
+	color: #404040;
+	background-color: #f0f0f0;
+	font-size: 0.9025em;
+}
+
+.ablist_header td
+{
+	height: 18px;
+	padding: 0 10px;
+	line-height: 18px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .ablist_item
 {
-	position: relative;
-	display: block;
-	overflow: hidden;
-	left: 0px;
-	top: 0px;
-	box-sizing: border-box;
-	-moz-box-sizing: border-box;
-	width: 100%;
-	height: 20px;
-	line-height: 19px;
-	border-top: 1px solid;
-	border-top-color: #ffffff;
-/*
-	border-bottom: 1px solid;
-	border-bottom-color: #ffffff;
-*/
 	color: #404040;
-	cursor: default;
-	padding-left: 0px;
-	padding-right: 8px;
-	font-size: 1em;
-	background: #ffffff;
+	background-color: #fff;
+	font-size: 1.02885em;
+	border-top: 1px solid #ffffff !important;
 }
 
-.ablist_item_color
+.ablist_item td
 {
-	width: 6px;
-	height: 20px;
-	float: left;
-	margin-right: 4px;
-	background: #f00;
-}
-
-.ablist_item_data
-{
-	position: relative;
-	display: block;
+	height: 15px !important;
+	padding: 2px 4px;
+	line-height: 15px !important;
+	border-right: 1px solid #f0f0f0;
 	overflow: hidden;
-	left: 0px;
-	top: 0px;
-	box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	width: 100%;
-	height: 20px;
+	background-color: inherit;
+}
+
+.ablist_item td.ablist_item_color
+{
+	height: 100%;
+	width: 6px;
+	padding: 0;
+	border-color: #f0f0f0;
+	background-color: #f0f0f0;
+	border-right: none;
 }
 
 .ablist_item, x:-moz-any-link, x:default
@@ -1530,7 +1535,12 @@ input.non_editable
 	}
 }
 
-.company, .ablist_item_selected.company:hover
+.ablist_item:hover td
+{
+	border-right-color: #eee;
+}
+
+/*.company, .ablist_item_selected.company:hover
 {
 	padding-right: 30px;
 	background-image: url(../images/company_s_b.svg);
@@ -1543,7 +1553,7 @@ input.non_editable
 	background-image: url(../images/company_s_w.svg) !important;
 	background-repeat: no-repeat !important;
 	background-position: right top !important;
-}
+}*/
 
 .ablist_item_dragged
 {
@@ -1956,6 +1966,83 @@ select.inverse_select
 	height: 19px;
 	margin-top: 0px;
 	float: left;
+}
+
+#photoArrow
+{
+	position: absolute;
+	top: 184px;
+	left: 74px;
+	display: none;
+	height: 0px;
+	width: 0px;
+	padding: 0px;
+	height: 9px;
+	width: 16px;
+	background: url(../images/popupArrow.svg) no-repeat center;
+/*	border: 8px solid #585858;
+	border-top-color: transparent;
+	border-left-color: transparent;
+	border-right-color: transparent;*/
+	z-index: 103;
+}
+
+#photoBox
+{
+	position: absolute;
+	top: 192px;
+	left: 0;
+	display: none;
+	width: 300px;
+	background-color: #f0f0f0;
+	color: #404040;
+	border: 1px solid #c0c0c0;
+	z-index: 102;
+	cursor:default;
+
+	user-select: none;
+	-webkit-user-select:none;
+	-moz-user-select: -moz-none;
+}
+
+#photoBox h1
+{
+	margin: 0;
+	font-size: 1em;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#photoBoxContent
+{
+	padding: 10px;
+}
+
+#photoURL
+{
+	width: 218px;
+}
+
+#photoURL.invalid
+{
+	padding-right: 22px;
+	width: 196px;
+}
+
+#photoBoxButton
+{
+	top: -1px;
+	margin-left: 6px;
+	width: 50px;
+}
+
+@-moz-document url-prefix() {
+	#photoBoxButton
+	{
+		top: 0px;
+	}
 }
 
 /* XXX - For the next version

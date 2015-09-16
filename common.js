@@ -1620,7 +1620,56 @@ function localizeAddressTypes()
 					{fid:  3, type: 'input', 'data-addr-field': 'locality', placeholder: localization[globalInterfaceLanguage].pholderAddressCity},
 					{fid: 11, type: 'country'}
 				]
+	};
+}
+function vObjectLineFolding(inputText)
+{
+	var outputText='';
+	var maxLineOctetLength=75;
+	var count=0;
+
+	for(var i=0; inputText[i]!=undefined; i++)
+	{
+		var currentChar=inputText.charCodeAt(i);
+		var nextChar=inputText.charCodeAt(i+1);
+		if(currentChar==0x000D && nextChar==0x000A)
+		{
+			count=0;
+			outputText+='\r\n';
+			i++;
+			continue;
+		}
+
+		var surrogatePair=false;
+		if(currentChar<0x0080)
+			var charNum=1;
+		else if(currentChar<0x0800)
+			var charNum=2;
+		else if(currentChar<0xd800 || currentChar>=0xe000)
+			var charNum=3;
+		else
+		{
+			// surrogate pair
+			// UTF-16 encodes 0x10000-0x10FFFF by subtracting 0x10000 and splitting
+			// the 20 bits of 0x0-0xFFFFF into two halves
+			charNum=4;
+			surrogatePair=true;
+		}
+
+		if(count>maxLineOctetLength-charNum)
+		{
+			outputText+='\r\n ';
+			count=1;
+		}
+		outputText+=String.fromCharCode(currentChar);
+		if(surrogatePair)
+		{
+			outputText+=String.fromCharCode(vCardText.charCodeAt(i+1));
+			i++;
+		}
+		count+=charNum;
 	}
+	return outputText;
 }
 
 function rgbToHex(rgb)
@@ -1963,7 +2012,7 @@ dataTypes['address_type']={
 
 dataTypes['address_type_store_as']={
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['phone_type']={
 	'work': RegExp('^(?:voice,)?work$'),
@@ -1983,7 +2032,7 @@ dataTypes['phone_type']={
 dataTypes['phone_type_store_as']={
 	'_$!<iphone>!$_':'_$!<iPhone>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['email_type']={
 	'internet,work': RegExp('^internet,work$'),
@@ -1995,7 +2044,7 @@ dataTypes['email_type']={
 dataTypes['email_type_store_as']={
 	'_$!<mobileme>!$_':'_$!<mobileMe>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['url_type']={
 	'work': RegExp('^work$'),
@@ -2007,7 +2056,7 @@ dataTypes['url_type']={
 dataTypes['url_type_store_as']={
 	'_$!<homepage>!$_':'_$!<HomePage>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['date_type']={
 	':_$!<anniversary>!$_:': RegExp('^:_\\$!<anniversary>!\\$_:$'),
@@ -2017,7 +2066,7 @@ dataTypes['date_type']={
 dataTypes['date_store_as']={
 	'_$!<anniversary>!$_':'_$!<Anniversary>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['person_type']={
 	':_$!<father>!$_:': RegExp('^:_\\$!<father>!\\$_:$'),
@@ -2047,7 +2096,7 @@ dataTypes['person_type_store_as']={
 	'_$!<spouse>!$_':'_$!<Spouse>!$_',
 	'_$!<partner>!$_':'_$!<Partner>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['im_type']={
 	'work': RegExp('^work$'),
@@ -2059,7 +2108,7 @@ dataTypes['im_type']={
 dataTypes['im_type_store_as']={
 	'_$!<mobileme>!$_':'_$!<mobileMe>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['im_service_type_store_as']={
 	'aim':'AIM',
@@ -2073,7 +2122,7 @@ dataTypes['im_service_type_store_as']={
 	'googletalk':'GoogleTalk',
 	'qq':'QQ',
 	'skype':'Skype'
-}
+};
 
 dataTypes['profile_type']={
 	'twitter': RegExp('^twitter$'),
@@ -2084,4 +2133,4 @@ dataTypes['profile_type']={
 	'sinaweibo': RegExp('^sinaweibo$')
 };
 
-dataTypes['profile_type_store_as']={}
+dataTypes['profile_type_store_as']={};

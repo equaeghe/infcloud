@@ -29,11 +29,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 	<link rel="stylesheet" href="css/jquery-ui.custom.css" type="text/css" />
 	<link rel="stylesheet" href="css/jquery.tagsinput.css" type="text/css" />
 	<link rel="stylesheet" href="css/spectrum.custom.css" type="text/css" />
-	<link rel="stylesheet" href="css/fullcalendar.css" type="text/css" />
 	<link rel="stylesheet" href="css/default.css" type="text/css" />
+	<link rel="stylesheet" href="css/fullcalendar.css" type="text/css" />
 	<link rel="stylesheet" href="css/default_integration.css" type="text/css" />
 	<script src="cache_handler.js" type="text/javascript"></script>
-	<script src="lib/jquery-2.1.3.min.js" type="text/javascript"></script>
+	<script src="lib/jquery-2.1.4.min.js" type="text/javascript"></script>
 	<script src="lib/jquery.browser.js" type="text/javascript"></script>
 	<script src="lib/jquery.autosize.js" type="text/javascript"></script>
 	<script src="lib/jquery-ui-1.11.4.custom.js" type="text/javascript"></script>
@@ -53,6 +53,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 	<script src="resource.js" type="text/javascript"></script>
 	<script src="vcalendar.js" type="text/javascript"></script>
 	<script src="vtodo.js" type="text/javascript"></script>
+	<script src="lib/rrule.js" type="text/javascript"></script>
 	<script src="addressbook.js" type="text/javascript"></script>
 	<script src="data_process.js" type="text/javascript"></script>
 	<script src="main.js" type="text/javascript"></script>
@@ -109,9 +110,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 	</div>
 	<div id="AlertDisabler"></div>
 	<div id="alertBox">
-		<h1>Alerts</h1>
+		<h1 id="alertsH">Alerts</h1>
 		<div id="alertBoxContent"></div>
-		<input type="button" value="Clear Alerts" onclick="clearAlertEvents();" />
+		<input id="alertButton" type="button" value="Clear Alerts" onclick="clearAlertEvents();" />
 	</div>
 	<div class="integration_d">
 		<div id="intCaldav" title="calendar" onclick="checkForApplication('CalDavZAP');">
@@ -123,7 +124,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 		<div id="intCarddav" title="addressbook" onclick="checkForApplication('CardDavMATE');">
 			<img class="int_error" src="images/error_badge.svg" alt="error" />
 		</div>
-		<div id="intBlank"></div>
+		<div class="intBlank"></div>
+		<div id="intRefresh" title="refresh" onclick="reloadResources();"></div>
+		<div class="intBlank"></div>
 		<div id="intLogout" title="logout" onclick="logout();"></div>
 	</div>
 	<div class="System" id="SystemCalDavZAP">
@@ -1142,7 +1145,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 			{
 				$('#ResourceCardDAVListOverlay').fadeTo(globalEditorFadeAnimation, 0.6);
 				$('#ABListOverlay').fadeTo(globalEditorFadeAnimation, 0.6);
-				globalRefABList.find('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+				globalRefABListTable.find('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
 				globalAddressbookList.loadContactByVcard('BEGIN:VCARD\r\nVERSION:3.0\r\n'+(typeof globalGroupContactsByCompanies!='undefined' && globalGroupContactsByCompanies===true ? 'X-ABShowAs:company\r\n' : '')+'FN:\r\nN:;;;;\r\nEND:VCARD\r\n', this.getAttribute('data-color'), true, 'add');
 
 				$('#vCardEditor').attr('data-editor-state','edit');
@@ -1183,15 +1186,38 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 			<img data-type="reset" style="display: none; position: absolute; margin-top: 5px; right: 9px; vertical-align: top; cursor: pointer;" src="images/reset_b.svg" alt="reset" onclick="$('#ABInMessage').height(0);hideNotVisibleMessage();if(globalQs!=null){$('[data-type=search]').val(''); globalQs.search('');}" />
 		</div>
 		<div id="ABList">
-			<div id="ABListTemplate" style="display: none;">
-				<div class="ablist_header" style="display: none;"></div>
-				<div class="ablist_item" style="display: none;">
-					<div class="ablist_item_data"><div class="ablist_item_color"></div></div>
-				</div>
-			</div>
+			<table id="ABListTable">
+				<colgroup>
+					<col class="ablist_column_color" />
+				</colgroup>
+				<tbody>
+					<tr class="ablist_table_header">
+						<th></th>
+					</tr>
+					<tr class="ablist_table_container">
+						<td>
+							<div class="ablist_table_wrapper">
+								<table id="ABListTableInner">
+									<colgroup>
+										<col class="ablist_column_color" />
+									</colgroup>
+									<tbody>
+										<tr class="ablist_header" style="display: none;">
+											<td></td>
+										</tr>
+										<tr class="ablist_item" style="display: none;">
+											<td class="ablist_item_color"></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
-		<div id="ABContactColor"></div>
 		<div id="ABListOverlay"></div>
+		<div id="ABContactColor"></div>
 		<div id="ABMessage">
 			<div id="ABMessageText"></div>
 		</div>
@@ -1223,9 +1249,21 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 									<tr>
 										<td data-attr-name="PHOTO" rowspan="10" class="photo_box">
 											<div class="photo_div">
-												<canvas id="photo" data-type="photo" class="photo photo_user photo_blank" onclick="if($(this).parent().find('#photo_drag').css('display')!='none') $('#upload_file').trigger('click');">Photo</canvas>
-												<img id="photo_drag" data-type="photo_drag" class="photo_drag" style="position: absolute; left: 0px; top: 0px; display: none; pointer-events: none;" src="images/drag.svg" alt="" /><img id="reset_img" data-type="reset_img" style="position: absolute; top: 10px; left: 140px; vertical-align: top; cursor: pointer; display: none;" src="images/reset_b.svg" alt="remove" onclick="vCard.tplM['contentline_PHOTO'][0]=null; $('#upload_file').val(''); $(this).css('display', 'none'); $('#photo').addClass('photo_blank'); var canvasElement=$('#photo').get(0); canvasElement.getContext('2d').clearRect(0,0,canvasElement.width,canvasElement.height);">
+												<canvas id="photo" data-type="photo" class="photo photo_user photo_blank" onclick="if($(this).parent().find('#photo_drag').css('display')!='none'){if(event.shiftKey){showPhotoBox(event);}else{$('#upload_file').trigger('click');}}">Photo</canvas>
+												<img id="photo_drag" data-type="photo_drag" class="photo_drag" style="position: absolute; left: 0px; top: 0px; display: none; pointer-events: none;" src="images/drag.svg" alt="" /><img id="reset_img" data-type="reset_img" style="position: absolute; top: 10px; left: 140px; vertical-align: top; cursor: pointer; display: none;" src="images/reset_b.svg" alt="remove" onclick="vCard.tplM['contentline_PHOTO'][0]=null; $('#upload_file, #photoURL, #photoURLHidden').val('');$(this).css('display', 'none'); $('#photo').addClass('photo_blank'); var canvasElement=$('#photo').get(0); canvasElement.getContext('2d').clearRect(0,0,canvasElement.width,canvasElement.height);">
 												<div style="width: 0px !important; height: 0px !important; overflow: hidden !important; top: -20px !important; left: -20px !important;"><input type="file" id="upload_file" name="upload_file" accept="image/*" /></div>
+											</div>
+											<div id="photoArrow"></div>
+											<div id="photoBox">
+												<h1>remote image url</h1>
+												<div id="photoBoxContent">
+													<form onsubmit="return false;">
+														<input type="text" id="photoURL" autocomplete="off" />
+														<img data-type="invalid" style="position: inline; margin-top: 1px; margin-left: -22px; display: none; vertical-align: top;" src="images/error_b.svg" alt="invalid">
+														<input type="hidden" id="photoURLHidden" autocomplete="off" />
+														<input type="submit" id="photoBoxButton" value="OK" />
+													</form>
+												</div>
 											</div>
 										</td>
 									</tr>
@@ -1550,7 +1588,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 									var tmp_data_id=$('#vCardEditor').find('[data-type=cancel]').attr('data-id');
 									var tmp_background_color=$('#ABContactColor').css('background-color');
 
-									globalRefABList.find('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+									globalRefABListTable.find('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
 									$('#ABContactColor').css('background-color', tmp_background_color);
 									globalAddressbookList.loadContactByVcard('BEGIN:VCARD\r\nVERSION:3.0\r\nORG:'+vcardEscapeValue($('#vCardEditor').find('[data-type=org]').val())+';'+vcardEscapeValue($('#vCardEditor').find('[data-type=department]').val())+'\r\nFN:\r\nN:;;;;\r\nEND:VCARD\r\n', tmp_background_color, false, 'add');
 
@@ -1560,6 +1598,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 									$('#vCardEditor').find('[data-type=cancel]').attr('data-id', tmp_data_id);
 									$('#vCardEditor').find('[data-type=given]').focus();
 									$('#ABContact').scrollTop(0);
+									checkContactFormScrollBar();
 								" />
 								<input data-type="edit" type="button" value="Edit" onclick="
 									// OK ale treba optimalizovat selectory
@@ -1570,6 +1609,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 									$('#vCardEditor').find('[data-disabled]').prop('disabled',true);
 									$('#vCardEditor').find('[data-type=given]').focus();
 									$('#ABContact').scrollTop(0);
+									checkContactFormScrollBar();
 								" />
 								<input data-type="save" type="button" value="Save" onclick="
 									if($('#vCardEditor').find('img[data-type=invalid]').is(':visible'))

@@ -49,7 +49,7 @@ function AddressbookList()
 		this.contactLoaded=null;
 		this.contactToReload=null;
 		this.vcardGroupLoaded=null;
-	}
+	};
 
 	this.getNewUID=function()
 	{
@@ -57,7 +57,7 @@ function AddressbookList()
 		var newUID=null;
 		newUID=generateUID();
 		return newUID;
-	}
+	};
 
 	this.getLoadedContactUID=function()
 	{
@@ -65,15 +65,13 @@ function AddressbookList()
 			return this.contactLoaded.uid;
 		else
 			return '';
-	}
+	};
 
 	this.getSortKey=function(inputContact, inputSettings, inputMode)	// inputMode (0=sort, 1=display)
 	{
-		/* backward compatibility for stupid users (remove it in future) */
-		if(typeof inputSettings=='string')
-			var tmp=inputSettings.replace(RegExp(',','g'), ', ').split(',');
-		else	/* new configuration options (arrays) */
-			var tmp=inputSettings.slice();	// copy the configuration array
+		var vcard_element=('\r\n'+inputContact.vcard).match(vCard.pre['contentline_N']);
+		if(vcard_element===null || vcard_element.length!==1)	// if the N attribute is not present exactly once, vCard is considered invalid
+			return false;
 
 		var sortKeyCompanyPart='';
 		if(typeof (getCRMSortKey)== 'function' && inputMode==0)
@@ -98,110 +96,63 @@ function AddressbookList()
 					return sortKeyCompanyPart;	// for company contact we can return here
 			}
 		}
-		if(globalSettings.collectiondisplayorg.value!=false)
+
+		var tmp = [];
+		var isGroup = this.isContactGroup(inputContact.vcard);
+		/* backward compatibility for stupid users (remove it in future) */
+		if(typeof inputSettings==='string')
+			tmp = inputSettings.replace(RegExp(',','g'), ', ').split(',');
+		else if($.isArray(inputSettings))	/* new configuration options (arrays) */
+			tmp = inputSettings.slice();	// copy the configuration array
+
+		// display settings for non-group contacts need some flattening
+		if(inputMode===1 && !isGroup) {
+			tmp = $.map(tmp, function(el) {
+				if($.isPlainObject(el.value)) {
+					return el.value;
+				}
+				else {
+					return [el.value];
+				}
+
+			});
+		}
+
+		// now flatten the array completely to a company / personal version
+		tmp = $.map(tmp, function(el) {
+			if($.isPlainObject(el)) {
+				if(inputContact.isCompany && el.hasOwnProperty('company')) {
+					return [el.company];
+				}
+				else if(!inputContact.isCompany && el.hasOwnProperty('personal')) {
+					return [el.personal];
+				}
+
+				return [];
+			}
+
+			return [el];
+		});
+
+		for(var i=0; i<tmp.length; i++) {
+			tmp[i] = getContactDataColumn(inputContact, tmp[i]);
+		}
+
+		sort_value = tmp.join(' ').trim();
+
+		if(sort_value==='' && isGroup)	// if we didn't get a proper sort value for group contacts, use FN
 		{
-			// check for company vCard
-			var vcard_contact_type=('\r\n'+inputContact.vcard).match(vCard.pre['X-ABShowAs']);
-			if(vcard_contact_type!=null && vcard_contact_type.length>0)	// if more than one X-ABShowAs is present, use the first one
+			var vcard_element2=('\r\n'+inputContact.vcard).match(vCard.pre['contentline_FN']);
+			if(vcard_element2!=null && vcard_element2.length==1)	// if the FN attribute is not present exactly once, vCard is considered invalid
 			{
 				// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
-				var parsed=vcard_contact_type[0].match(vCard.pre['contentline_parse']);
-				if(parsed[4].toLowerCase()=='company')	// company vCard
-				{
-					var vcard_orgname=('\r\n'+inputContact.vcard).match(vCard.pre['contentline_ORG']);
-					if(vcard_orgname!=null && vcard_orgname.length>0)	// if more than one ORG is present, use the first one
-					{
-						// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
-						var parsed=vcard_orgname[0].match(vCard.pre['contentline_parse']);
-						var parsed_value=vcardSplitValue(parsed[4],';');
-
-						if(parsed_value[0]!='')
-							return parsed_value[0];
-					}
-				}
+				var parsed=vcard_element2[0].match(vCard.pre['contentline_parse']);
+				var sort_value=parsed[4];
 			}
 		}
 
-		var vcard_element=('\r\n'+inputContact.vcard).match(vCard.pre['contentline_N']);
-		if(vcard_element!=null && vcard_element.length==1)	// if the N attribute is not present exactly once, vCard is considered invalid
-		{
-			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
-			var parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
-			// parsed_value = [0]->Family, [1]->Given, [2]->Middle, [3]->Prefix, [4]->Suffix
-			var parsed_value=vcardSplitValue(parsed[4],';');
-
-			var first_found=false;
-			for(var i=0;i<tmp.length;i++)
-			{
-				var tmp_found=false;
-				if(tmp[i].match(IntProc['last'])!=null)
-				{
-					if(parsed_value[0]==undefined || parsed_value[0]=='')
-						tmp[i]='';
-					else
-					{
-						tmp[i]=tmp[i].replace((!first_found ? IntProc['_last'] : IntProc['last']),parsed_value[0]);
-						first_found=true;
-					}
-				}
-				else if(tmp[i].match(IntProc['first'])!=null)
-				{
-					if(parsed_value[1]==undefined || parsed_value[1]=='')
-						tmp[i]='';
-					else
-					{
-						tmp[i]=tmp[i].replace((!first_found ? IntProc['_first'] : IntProc['first']),parsed_value[1]);
-						first_found=true;
-					}
-				}
-				else if(tmp[i].match(IntProc['middle'])!=null)
-				{
-					if(parsed_value[2]==undefined || parsed_value[2]=='')
-						tmp[i]='';
-					else
-					{
-						tmp[i]=tmp[i].replace((!first_found ? IntProc['_middle'] : IntProc['middle']),parsed_value[2]);
-						first_found=true;
-					}
-				}
-				else if(tmp[i].match(IntProc['prefix'])!=null)
-				{
-					if(parsed_value[3]==undefined || parsed_value[3]=='')
-						tmp[i]='';
-					else
-					{
-						tmp[i]=tmp[i].replace((!first_found ? IntProc['_prefix'] : IntProc['prefix']),parsed_value[3]);
-						first_found=true;
-					}
-				}
-				else if(tmp[i].match(IntProc['suffix'])!=null)
-				{
-					if(parsed_value[4]==undefined || parsed_value[4]=='')
-						tmp[i]='';
-					else
-					{
-						tmp[i]=tmp[i].replace((!first_found ? IntProc['_suffix'] : IntProc['suffix']),parsed_value[4]);
-						first_found=true;
-					}
-				}
-			}
-			sort_value=tmp.join('');
-
-			if(sort_value=='')	// if no N value present, we use the FN instead
-			{
-				var vcard_element2=('\r\n'+inputContact.vcard).match(vCard.pre['contentline_FN']);
-				if(vcard_element2!=null && vcard_element2.length==1)	// if the FN attribute is not present exactly once, vCard is considered invalid
-				{
-					// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
-					var parsed=vcard_element2[0].match(vCard.pre['contentline_parse']);
-					var sort_value=parsed[4];
-				}
-			}
-			return (inputMode==0 ? sortKeyCompanyPart+sort_value : sort_value);
-		}
-		else
-			return false;
-	}
+		return (inputMode===0 ? sortKeyCompanyPart+sort_value : sort_value);
+	};
 
 	this.isContactGroup=function(inputVcard)
 	{
@@ -214,7 +165,7 @@ function AddressbookList()
 				return true;
 		}
 		return false;
-	}
+	};
 
 	this.getMyContactGroups=function(inputUid)
 	{
@@ -237,7 +188,7 @@ function AddressbookList()
 		}
 		else
 			return null;
-	}
+	};
 
 	this.getRemoveMeFromContactGroups=function(inputUid, inputContactGroupsUidArr)
 	{
@@ -287,7 +238,7 @@ function AddressbookList()
 		}
 		else
 			return null;
-	}
+	};
 
 	this.getAddMeToContactGroups=function(inputContactObj, inputContactGroupsUidArr)
 	{
@@ -321,12 +272,12 @@ function AddressbookList()
 					changedContactGroups[changedContactGroups.length-1].vcard=normalizeVcard(changedVcard);
 				}
 		return changedContactGroups;
-	}
+	};
 
 	// Contact group list is not sorted, instead "insert sort" is performed
 	this.insertContactGroup=function(inputContact, forceReload, forceReinsert)
 	{
-		if((inputContact.sortkey=this.getSortKey(inputContact, ['last'], 0))===false || (inputContact.displayvalue=this.getSortKey(inputContact, ['last'], 1))===false)
+		if((inputContact.sortkey=this.getSortKey(inputContact, [['{LastName}']], 0))===false || (inputContact.displayvalue=this.getSortKey(inputContact, [['{LastName}']], 1))===false)
 			return false;	//invalid vcard
 
 		var makeActive=null;
@@ -452,7 +403,7 @@ function AddressbookList()
 			$('#ResourceCardDAVList').find('[data-id='+jqueryEscapeSelector(makeChecked)+']').find('input[type=checkbox]').prop('checked',true);
 			this.applyABFilter(dataGetChecked('#ResourceCardDAVList'), false);
 		}
-	}
+	};
 
 	this.removeContactGroup=function(inputUid, loadNext)
 	{
@@ -478,7 +429,7 @@ function AddressbookList()
 				}
 				break;
 			}
-	}
+	};
 
 	// hide/show contacts in the interface according to contactGroupOrResourceUid or search filter in the interface (contactGroupOrResourceUid==false)
 	this.applyABFilter=function(contactGroupOrResourceUid, inputForceLoadNext)
@@ -578,7 +529,13 @@ function AddressbookList()
 		var prevHeader=null;
 		var lastContactForHeader=this.contacts.length-1;
 		// performance
-		var tmpListRefChildren=globalRefABList.children();
+		var tmpListRefChildren=globalRefABListTable.children();
+		// init displayed columns text length cache
+		var columnLengths = [];
+		for(var i=0; i<getDataColumnCount(); i++) {
+			columnLengths.push([]);
+		}
+
 		// the show attribute is now set, we can make changes in the interface
 		for(var i=this.contacts.length-1;i>=0;i--)
 		{
@@ -593,19 +550,19 @@ function AddressbookList()
 					}
 
 				// performance
-				var tmpListRefChildren_i_plus_one=tmpListRefChildren.eq(i+1);
-				var tmpListRefChildren_prev_plus_one=tmpListRefChildren.eq(prevHeader+1);
+				var tmpListRefChildren_i=tmpListRefChildren.eq(i);
+				var tmpListRefChildren_prev=tmpListRefChildren.eq(prevHeader);
 
 				var coll_tmp=this.contacts[i].uid.match(RegExp('^(https?://)([^@/]+(?:@[^@/]+)?)@([^/]+)(.*/)([^/]+/)([^/]*)','i'));
 				var collection_uid=coll_tmp[1]+coll_tmp[2]+'@'+coll_tmp[3]+coll_tmp[4]+coll_tmp[5];
 				var coll_color=globalResourceCardDAVList.getCollectionByUID(collection_uid).color;
 				this.contacts[i].color = coll_color;
-				tmpListRefChildren_i_plus_one.find('.ablist_item_color').css('background-color', coll_color);
+				tmpListRefChildren_i.find('.ablist_item_color').css('background-color', coll_color);
 				switch(this.contacts[i].show)
 				{
 					case false:
-						tmpListRefChildren_i_plus_one.css('display','none');
-						if(tmpListRefChildren_i_plus_one.hasClass('ablist_item_selected'))
+						tmpListRefChildren_i.css('display','none');
+						if(tmpListRefChildren_i.hasClass('ablist_item_selected'))
 							lastActive=i;
 
 						var hideHeader=true;
@@ -617,15 +574,21 @@ function AddressbookList()
 							}
 
 						if(hideHeader)
-							tmpListRefChildren_prev_plus_one.css('display','none');
+							tmpListRefChildren_prev.css('display','none');
 
 						break;
 					case true:
 						// set the contact header to visible
-						tmpListRefChildren_prev_plus_one.css('display','');
+						tmpListRefChildren_prev.css('display','');
 
 						// set the contact to visible
-						tmpListRefChildren_i_plus_one.css('display','');
+						tmpListRefChildren_i.css('display','');
+
+						// save column text length into cache
+						tmpListRefChildren_i.children().slice(globalFixedContactDataColumnsCount).each(function(ind) {
+							columnLengths[ind].push($(this).text().length);
+						});
+
 						break;
 					default:
 						break;
@@ -635,8 +598,10 @@ function AddressbookList()
 				lastContactForHeader=i-1;
 		}
 
+		setDataColumnsWidth(columnLengths);
+
 		// the previously loaded contact is hidden or not exists we need to select a new one
-		if(inputForceLoadNext==true || $('#vCardEditor').attr('data-editor-state')!='edit' && (lastActive!=null || globalRefABList.children('.ablist_item_selected').length==0))
+		if(inputForceLoadNext==true || $('#vCardEditor').attr('data-editor-state')!='edit' && (lastActive!=null || globalRefABListTable.children('.ablist_item_selected').length==0))
 		{
 			var nextCandidateToLoad=null;
 			// get the nearest candidate to load
@@ -663,7 +628,7 @@ function AddressbookList()
 				}
 			}
 			// make the contact active
-			globalRefABList.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+			globalRefABListTable.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
 			if(nextCandidateToLoad!=null)
 			{
 				// prevent re-loading the contact if it is already loaded
@@ -674,11 +639,11 @@ function AddressbookList()
 				else	// because the collection click unselects the active contact we need to re-select it
 				{
 					// Make the selected contact active
-					globalRefABList.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
-					globalRefABList.children('[data-id='+jqueryEscapeSelector(nextCandidateToLoad.uid)+']').addClass('ablist_item_selected');
+					globalRefABListTable.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+					globalRefABListTable.children('[data-id='+jqueryEscapeSelector(nextCandidateToLoad.uid)+']').addClass('ablist_item_selected');
 				}
 				// move scrollbar to ensure that the contact is visible in the interface
-				if((selected_contact=globalRefABList.children('.ablist_item_selected')).length==1)
+				if((selected_contact=globalRefABListTable.children('.ablist_item_selected')).length==1)
 					globalRefABList.scrollTop(globalRefABList.scrollTop()+selected_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
 			}
 			else
@@ -688,11 +653,11 @@ function AddressbookList()
 				$('#ABContact').html('');
 			}
 		}
-		if(this.contactToReload!=null&& (selected_contact=globalRefABList.find('[data-id="'+this.contactToReload.uid+'"]')).length==1)
+		if(this.contactToReload!=null&& (selected_contact=globalRefABListTable.find('[data-id="'+this.contactToReload.uid+'"]')).length==1)
 		{
 			selected_contact.addClass('ablist_item_selected');
 			globalRefABList.scrollTop(globalRefABList.scrollTop()+selected_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
-		
+
 		}
 	}
 
@@ -763,8 +728,6 @@ function AddressbookList()
 					inputContact.isLegacy=true;
 			}
 		}
-		if((inputContact.sortkey=this.getSortKey(inputContact, globalSettings.collectionsort.value, 0))===false || (inputContact.displayvalue=this.getSortKey(inputContact, globalSettings.collectiondisplay.value, 1))===false)
-			return false;	//invalid vcard
 
 		// contact UID attr
 		var vcard_element=inputContact.vcard.match(vCard.pre['contentline_UID']);
@@ -777,8 +740,6 @@ function AddressbookList()
 		else	// UID attr is REQUIRED
 			return false;	// invalud vcard
 
-		var tmpTemplateRef=globalRefABListTemplate;
-		var tmpAddRef=globalRefAddContact;
 		var this_destination=this.contacts;
 		var this_destination_hash=this.contacts_hash;
 		var this_destination_hash_uidattr=this.contacts_hash_uidattr;
@@ -791,6 +752,7 @@ function AddressbookList()
 		var allCategoriesArr=this.getABCategories(false);
 
 		// The search funcionality uses this ASCII value (you can add additional data here)
+
 		// ORG attribute
 		var tmp=inputContact.vcard;
 		var orgArr=[];
@@ -802,6 +764,14 @@ function AddressbookList()
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			var parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 			var parsed_valArr=vcardSplitValue(parsed[4], ';');
+
+			if(isDataColumnDefined('COMPANY')) {
+				setContactDataColumn(inputContact, 'COMPANY', vcardUnescapeValue(parsed_valArr[0]));
+			}
+
+			if(isDataColumnDefined('DEPARTMENT')) {
+				setContactDataColumn(inputContact, 'DEPARTMENT', vcardUnescapeValue(parsed_valArr[1]));
+			}
 
 			tmpCurrentCompany=(parsed_valArr[0]==undefined || parsed_valArr[0]=='' ? '' : parsed_valArr[0]);
 			tmpCurrentDepartment=(parsed_valArr[1]==undefined || parsed_valArr[1]=='' ? '' : parsed_valArr[1]);
@@ -818,79 +788,283 @@ function AddressbookList()
 		var allOrgArr=this.getABCompanies(false);
 
 		// N attribute
-		var nArr=[];
 		while((vcard_element=tmp.match(vCard.pre['contentline_N']))!=null)
 		{
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			var parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 			var parsed_valArr=vcardSplitValue(parsed[4],';');
 
-			for(var i=0;i<parsed_valArr.length;i++)
-				if(parsed_valArr[i]!=undefined && parsed_valArr[i]!='')
-					nArr[i]=(nArr[i]==undefined ? '' : nArr[i]+' ')+vcardUnescapeValue(parsed_valArr[i]);
+			if(isDataColumnDefined('LASTNAME')) {
+				setContactDataColumn(inputContact, 'LASTNAME', vcardUnescapeValue(parsed_valArr[0]));
+			}
+
+			if(isDataColumnDefined('FIRSTNAME')) {
+				setContactDataColumn(inputContact, 'FIRSTNAME', vcardUnescapeValue(parsed_valArr[1]));
+			}
+
+			if(isDataColumnDefined('MIDDLENAME')) {
+				setContactDataColumn(inputContact, 'MIDDLENAME', vcardUnescapeValue(parsed_valArr[2]));
+			}
+
+			if(isDataColumnDefined('PREFIX')) {
+				setContactDataColumn(inputContact, 'PREFIX', vcardUnescapeValue(parsed_valArr[3]));
+			}
+
+			if(isDataColumnDefined('SUFFIX')) {
+				setContactDataColumn(inputContact, 'SUFFIX', vcardUnescapeValue(parsed_valArr[4]));
+			}
 
 			// remove the processed parameter
 			tmp=tmp.replace(vcard_element[0],'\r\n');
 		}
 
 		// NICKNAME attribute
-		var nicknameArr=[];
 		while((vcard_element=tmp.match(vCard.pre['contentline_NICKNAME']))!=null)
 		{
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 
-			nicknameArr[nicknameArr.length]=parsed[4];
+			if(isDataColumnDefined('NICKNAME')) {
+				setContactDataColumn(inputContact, 'NICKNAME', parsed[4]);
+			}
 
 			// remove the processed parameter
 			tmp=tmp.replace(vcard_element[0],'\r\n');
 		}
 
-		// TEL attribute
-		var telArr=[];
-		while((vcard_element=tmp.match(vCard.pre['contentline_TEL']))!=null)
+		// X-PHONETIC-LAST-NAME attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_X-PHONETIC-LAST-NAME']))!=null)
 		{
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 
-			telArr[telArr.length]=(parsed[4].charAt(0)=='+' ? '+' : '')+parsed[4].replace(RegExp('[^0-9]','g'),'');
+			if(isDataColumnDefined('PHONETICLASTNAME')) {
+				setContactDataColumn(inputContact, 'PHONETICLASTNAME', parsed[4]);
+			}
 
 			// remove the processed parameter
 			tmp=tmp.replace(vcard_element[0],'\r\n');
 		}
 
-		// EMAIL attribute
-		var emailArr=[];
-		while((vcard_element=tmp.match(vCard.pre['contentline_EMAIL']))!=null)
+		// X-PHONETIC-FIRST-NAME attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_X-PHONETIC-FIRST-NAME']))!=null)
 		{
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 
-			emailArr[emailArr.length]=parsed[4];
+			if(isDataColumnDefined('PHONETICFIRSTNAME')) {
+				setContactDataColumn(inputContact, 'PHONETICFIRSTNAME', parsed[4]);
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// BDAY attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_BDAY']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('BIRTHDAY')) {
+				var bday = null;
+				try {
+					bday = $.datepicker.parseDate('yy-mm-dd', parsed[4]);
+				}
+				catch(e) {
+
+				}
+
+				if(bday) {
+					setContactDataColumn(inputContact, 'BIRTHDAY', $.datepicker.formatDate(globalSettings.datepickerformat.value, bday));
+				}
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// TITLE attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_TITLE']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('JOBTITLE')) {
+				setContactDataColumn(inputContact, 'JOBTITLE', vcardUnescapeValue(parsed[4]));
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// NOTE attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_NOTE']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('NOTETEXT')) {
+				setContactDataColumn(inputContact, 'NOTETEXT', vcardUnescapeValue(parsed[4]));
+			}
 
 			// remove the processed parameter
 			tmp=tmp.replace(vcard_element[0],'\r\n');
 		}
 
 		// ADR attribute
-		var adrArr=[];
 		while((vcard_element=tmp.match(vCard.pre['contentline_ADR']))!=null)
 		{
 			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 			var parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 			var parsed_valArr=vcardSplitValue(parsed[4],';');
-			//city
-			if(parsed_valArr[3]!=undefined && parsed_valArr[3]!='')
-				adrArr[3]=vcardUnescapeValue(parsed_valArr[3]);
-			//zip code
-			if(parsed_valArr[5]!=undefined && parsed_valArr[5]!='')
-				adrArr[5]=vcardUnescapeValue(parsed_valArr[5]);
+
+			if(isDataColumnDefined('ADDRESS')) {
+				var unescapedArr = $.map(parsed_valArr, function(el) {
+					if(el) {
+						return vcardUnescapeValue(el);
+					}
+				});
+
+				setContactDataColumn(inputContact, 'ADDRESS', unescapedArr.join(' '), {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'address_type_store_as')});
+			}
+
 			// remove the processed parameter
 			tmp=tmp.replace(vcard_element[0],'\r\n');
 		}
 
-		// Search data (displayvalue+categories+orgs+deps+emails)
-		inputContact.searchvalue=(nArr.join(' ')+' '+nicknameArr.join(' ')+' '+categoriesArr.join(' ')+' '+orgArr.join(' ')+' '+depArr.join(' ')+' '+telArr.join(' ')+' '+emailArr.join(' ')+' '+adrArr.join(' ')).multiReplace(globalSearchTransformAlphabet);
+		// TEL attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_TEL']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('PHONE')) {
+				setContactDataColumn(inputContact, 'PHONE', parsed[4], {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'phone_type_store_as')});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// EMAIL attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_EMAIL']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('EMAIL')) {
+				setContactDataColumn(inputContact, 'EMAIL', parsed[4], {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'email_type_store_as')});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// URL attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_URL']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('URL')) {
+				setContactDataColumn(inputContact, 'URL', parsed[4], {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'url_type_store_as')});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// X-ABDATE attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_X-ABDATE']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('DATES')) {
+				var abdate = null;
+				try {
+					abdate = $.datepicker.parseDate('yy-mm-dd', parsed[4]);
+				}
+				catch(e) {
+
+				}
+
+				if(abdate) {
+					setContactDataColumn(inputContact, 'DATES', $.datepicker.formatDate(globalSettings.datepickerformat.value, abdate), {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'date_store_as')});
+				}
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// X-ABRELATEDNAMES attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_X-ABRELATEDNAMES']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('RELATED')) {
+				setContactDataColumn(inputContact, 'RELATED', parsed[4], {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'person_type_store_as')});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// X-SOCIALPROFILE attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_X-SOCIALPROFILE']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+
+			if(isDataColumnDefined('PROFILE')) {
+				setContactDataColumn(inputContact, 'PROFILE', getParamsFromContentlineParse(tmp, parsed, 'X-USER', null, null, true)[0], {'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'profile_type_store_as')});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// IMPP attribute
+		while((vcard_element=tmp.match(vCard.pre['contentline_IMPP']))!=null)
+		{
+			// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
+			parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
+			if(isDataColumnDefined('IM')) {
+				setContactDataColumn(inputContact, 'IM', parsed[4].replace(vCard.pre['vcardToData_before_val'], ''), {
+					'TYPE': getParamsFromContentlineParse(tmp, parsed, 'TYPE', 'X-ABLabel', 'im_type_store_as'),
+					'SERVICE-TYPE': getParamsFromContentlineParse(tmp, parsed, 'X-SERVICE-TYPE', null, 'im_service_type_store_as')
+				});
+			}
+
+			// remove the processed parameter
+			tmp=tmp.replace(vcard_element[0],'\r\n');
+		}
+
+		// CATEGORIES attribute (preparsed)
+		if(isDataColumnDefined('CATEGORIES')) {
+			setContactDataColumn(inputContact, 'CATEGORIES', inputContact.categories.splitCustom(','));
+		}
+
+		if((inputContact.sortkey=this.getSortKey(inputContact, globalSettings.collectionsort.value || $.map(globalSettings.collectiondisplay.value, function(el) {if($.isPlainObject(el.value)) {return el.value;} else {return [el.value];}}), 0))===false || (inputContact.displayvalue=this.getSortKey(inputContact, globalSettings.collectiondisplay.value, 1))===false)
+			return false;	//invalid vcard
+
+		// if company headers are used add also the header to the searchvalue
+		var companyHeader='';
+		if(typeof globalGroupContactsByCompanies!='undefined' && globalGroupContactsByCompanies==true)
+		{
+			if(tmpCurrentCompany!='' || tmpCurrentDepartment!='')
+			{
+				if(typeof (getCRMSortKey)=='function')
+					companyHeader=getCRMSortKey(inputContact);
+				else
+					companyHeader=tmpCurrentCompany+'\u0009'+tmpCurrentDepartment+'\u0009';
+			}
+		}
+
+		inputContact.searchvalue=(companyHeader+inputContact.displayvalue).multiReplace(globalSearchTransformAlphabet);
 
 		// CATEGORIES suggestion
 		for(var i=0;i<allCategoriesArr.length;i++)	// if a contact is changed remove it from previous categories
@@ -933,6 +1107,7 @@ function AddressbookList()
 			var beforeSortKeyChar='';
 			if(typeof globalGroupContactsByCompanies!='undefined' && globalGroupContactsByCompanies==true && tmpCurrentCompany=='' && tmpCurrentDepartment=='')
 				beforeSortKeyChar='\u0009';
+
 			if(this_destination_hash[inputContact.uid].displayvalue==inputContact.displayvalue && this_destination_hash[inputContact.uid].sortkey==(beforeSortKeyChar+inputContact.sortkey) && this_destination_hash[inputContact.uid].isCompany==inputContact.isCompany && this_destination_hash[inputContact.uid].isLegacy==inputContact.isLegacy)
 			{
 				// we perform the normalization here, because we need to check whether the vCard is changed or not
@@ -1061,22 +1236,36 @@ function AddressbookList()
 			// insert header to interface if not exists
 			if(headerMiss)
 			{
-				var newElement=globalTranslABListHeader.clone();
-				newElement.text(headerObject.displayvalue);
-				globalRefABList.children().eq(insertIndex).after(newElement);
+				var newElement=globalOrigABListHeader.clone();
+				newElement.children().text(headerObject.displayvalue);
+				if(globalRefABListTable.children().eq(insertIndex).length==0)	// if a tbody is completely empty we cannot search using index
+					globalRefABListTable.append(newElement);
+				else
+					globalRefABListTable.children().eq(insertIndex).before(newElement);
 			}
 
 			// insert the contact to interface
-			var newElement=globalTranslABListItem.clone();
+			var newElement=globalOrigABListItem.clone();
 			if(typeof inputContact.isLegacy!='undefined' && inputContact.isLegacy)
 				newElement.css('text-decoration','line-through');
 			else
 				newElement.css('text-decoration','none');
 
 			newElement.attr('data-id', inputContact.uid);
-			newElement.find('.ablist_item_color').css('background-color', inputContact.color);
-			newElement.find('.ablist_item_data').append(vcardUnescapeValue(inputContact.displayvalue));
-			newElement.click(function(){if($(this).hasClass('ablist_item_selected') || globalObjectLoading) return false; else globalAddressbookList.loadContactByUID(this.getAttribute('data-id'));});
+			newElement.children('.ablist_item_color').css('background-color', inputContact.color);
+
+			var columns = getContactDataColumns(inputContact.isCompany);
+			for(var i=0; i<columns.length; i++) {
+				$('<td>').text(getContactDataColumn(inputContact, columns[i])).appendTo(newElement);
+			}
+
+			newElement.click(function() {
+				if($(this).hasClass('ablist_item_selected') || globalObjectLoading)
+					return false;
+				else
+					globalAddressbookList.loadContactByUID(this.getAttribute('data-id'));
+			});
+
 			// set the company icon
 			if(inputContact.isCompany==true)
 				newElement.addClass('company');
@@ -1118,10 +1307,11 @@ function AddressbookList()
 					}
 				});
 
-			globalRefABList.children().eq(insertIndex+headerMiss).after(newElement);
+			globalRefABListTable.children().eq(insertIndex+headerMiss-1).after(newElement);
+
 			if($('#vCardEditor').attr('data-editor-state')=='edit')
 			{
-				if((selected_contact=globalRefABList.children('.ablist_item_selected')).length==1)
+				if((selected_contact=globalRefABListTable.children('.ablist_item_selected')).length==1)
 					globalRefABList.scrollTop(globalRefABList.scrollTop()+selected_contact.offset().top-globalRefABList.offset().top-globalRefABList.height()*globalKBNavigationPaddingRate);
 			}
 // toto tu asi nahradit zavolanim trigger('click') co vyrazne sprehladni kod
@@ -1130,8 +1320,8 @@ function AddressbookList()
 			if(makeActive!=null)
 			{
 				// make the contact active
-				globalRefABList.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
-				globalRefABList.children().eq(insertIndex+headerMiss+1).addClass('ablist_item_selected');
+				globalRefABListTable.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+				globalRefABListTable.children().eq(insertIndex+headerMiss).addClass('ablist_item_selected');
 				this.loadContactByUID(makeActive);
 			}
 		}
@@ -1142,29 +1332,42 @@ function AddressbookList()
 		var this_destination=this.contacts;
 		var this_destination_hash=this.contacts_hash;
 
-		// do not forget to insert the template
-		var tmpResultObject=[globalRefABListTemplate.clone()];
+		var tmpResultObject=[];
 
 		for(var i=0;i<this_destination.length;i++)
 		{
 			if(this_destination[i].headerOnly!=undefined && this_destination[i].headerOnly==true)
 			{
-				var newElement=globalTranslABListHeader.clone();
-				newElement.text(this_destination[i].displayvalue);
+				var newElement=globalOrigABListHeader.clone();
+				newElement.children().text(this_destination[i].displayvalue);
 			}
 			else
 			{
-
 				// insert the contact to interface
-				var newElement=globalTranslABListItem.clone();
+				var newElement=globalOrigABListItem.clone();
 				if(typeof this_destination[i].isLegacy!='undefined' && this_destination[i].isLegacy)
 					newElement.css('text-decoration','line-through');
 				else
 					newElement.css('text-decoration','none');
+
 				newElement.attr('data-id', this_destination[i].uid);
 				newElement.find('.ablist_item_color').css('background-color', this_destination[i].color);
-				newElement.find('.ablist_item_data').append(vcardUnescapeValue(this_destination[i].displayvalue));
-				newElement.click(function(){if($(this).hasClass('ablist_item_selected') || globalObjectLoading) return false; else globalAddressbookList.loadContactByUID(this.getAttribute('data-id'));});
+
+				var columns = getContactDataColumns(this_destination[i].isCompany);
+				for(var j=0; j<columns.length; j++) {
+					$('<td>').text(getContactDataColumn(this_destination[i], columns[j])).appendTo(newElement);
+				}
+				for(; j<getDataColumnCount(); j++) {
+					$('<td>').appendTo(newElement);
+				}
+
+				newElement.click(function() {
+					if($(this).hasClass('ablist_item_selected') || globalObjectLoading)
+						return false;
+					else
+						globalAddressbookList.loadContactByUID(this.getAttribute('data-id'));
+				});
+
 				// set the company icon
 				if(this_destination[i].isCompany==true)
 					newElement.addClass('company');
@@ -1208,7 +1411,8 @@ function AddressbookList()
 			}
 			tmpResultObject.push(newElement);
 		}
-		globalRefABList.empty().append(tmpResultObject);
+
+		globalRefABListTable.empty().append(tmpResultObject);
 	}
 
 	this.removeContact=function(inputUid, loadNext, isFromPUT)
@@ -1268,7 +1472,7 @@ function AddressbookList()
 					}
 
 				var nextCandidateToLoad=null;
-				var item=globalRefABList.find('[data-id^="'+jqueryEscapeSelector(this.contacts[i].uid)+'"]');
+				var item=globalRefABListTable.find('[data-id^="'+jqueryEscapeSelector(this.contacts[i].uid)+'"]');
 
 				// get the nearest candidate to load
 				//  if we can go forward
@@ -1321,7 +1525,7 @@ function AddressbookList()
 				// remove the header
 				if(removeHeader==true)
 				{
-					globalRefABList.children().eq(prevHeader+1).remove();
+					globalRefABListTable.children().eq(prevHeader).remove();
 					this.contacts.splice(prevHeader,1);
 				}
 
@@ -1335,7 +1539,7 @@ function AddressbookList()
 					}
 
 				if(hideHeader)
-					globalRefABList.children().eq(prevHeader+1).css('display','none');
+					globalRefABListTable.children().eq(prevHeader).css('display','none');
 
 				// update the active search
 				if(globalQs!=null)
@@ -1410,16 +1614,16 @@ function AddressbookList()
 				setTimeout(function(){globalObjectLoading=false;}, tmpTime);	// re-enable keyboard navigation
 			}
 			// Make the selected contact active
-			globalRefABList.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
-			globalRefABList.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']').addClass('ablist_item_selected');
+			globalRefABListTable.children('.ablist_item.ablist_item_selected').removeClass('ablist_item_selected');
+			globalRefABListTable.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']').addClass('ablist_item_selected');
 			this.contactToReload=null;
-			if(globalRefABList.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']:visible').length>0&&$('#ABInMessageEditBox').css('display')!='none')
+			if(globalRefABListTable.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']:visible').length>0&&$('#ABInMessageEditBox').css('display')!='none')
 			{
 				animate_message('#ABInMessageEditBox', '#ABInMessageTextEditBox', 0, '-=');
 				$('#ABInMessageEditBox').css('display','');
-				
+
 			}
-			else if(globalRefABList.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']:visible').length==0&&$('#ABInMessageEditBox').css('display')=='none')
+			else if(globalRefABListTable.children('[data-id='+jqueryEscapeSelector(this.contacts_hash[inputUID].uid)+']:visible').length==0&&$('#ABInMessageEditBox').css('display')=='none')
 			{
 				this.contactToReload=this.contacts_hash[inputUID];
 				globalDisableAnimationMessageHiding='errContactHidden';
@@ -1453,6 +1657,7 @@ function AddressbookList()
 			$('#ABContact').empty();
 //			CardDAVeditor_cleanup(false, false);	// editor initialization
 		}
+		checkContactFormScrollBar();
 	}
 
 	this.loadContactByVcard=function(vcard, color, isCompany, inputEditorMode, inputEditorLockedEntries)
@@ -1482,6 +1687,7 @@ function AddressbookList()
 			this.contactLoaded=null;	// do not do this earlier
 			globalObjectLoading=false;	// re-enable keyboard navigation
 		}
+		checkContactFormScrollBar();
 	}
 
 	// DONE
