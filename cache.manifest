@@ -1,5 +1,5 @@
 CACHE MANIFEST
-#V 20150316002722
+#V 20150916161532
 
 CACHE:
 addressbook.js
@@ -66,6 +66,7 @@ images/arrow.svg
 images/banner_addressbook.svg
 images/banner_calendar.svg
 images/banner_logout.svg
+images/banner_refresh.svg
 images/banner_todo.svg
 images/calendarB.svg
 images/cdm_logo.svg
@@ -104,6 +105,7 @@ images/needs_action_w.svg
 images/new_item.svg
 images/op_add.svg
 images/op_del.svg
+images/popupArrow.svg
 images/priority-1-dr.svg
 images/priority-1-r.svg
 images/priority-1.svg
@@ -150,7 +152,7 @@ images/todoB.svg
 images/user.svg
 lib/fullcalendar.js
 lib/ie_base64.js
-lib/jquery-2.1.3.min.js
+lib/jquery-2.1.4.min.js
 lib/jquery.autosize.js
 lib/jquery.browser.js
 lib/jquery.placeholder-1.1.9.js
@@ -158,6 +160,7 @@ lib/jquery.quicksearch.js
 lib/jquery.tagsinput.js
 lib/jquery-ui-1.11.4.custom.js
 lib/jshash-2.2_sha256.js
+lib/rrule.js
 lib/spectrum.js
 
 NETWORK:

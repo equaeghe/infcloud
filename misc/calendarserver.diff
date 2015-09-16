@@ -47,13 +47,13 @@ diff -ru web2/server.py web2-CardDavMATE/server.py
 +    if not response.headers.hasHeader('Access-Control-Allow-Origin'):
 +        response.headers.setHeader('Access-Control-Allow-Origin', '*')
 +    if not response.headers.hasHeader('Access-Control-Allow-Methods'):
-+        response.headers.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS,PROPFIND,REPORT,PUT,MOVE,DELETE,LOCK,UNLOCK')
++        response.headers.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS,PROPFIND,PROPPATCH,REPORT,PUT,MOVE,DELETE,LOCK,UNLOCK')
 +    if not response.headers.hasHeader('Access-Control-Allow-Headers'):
-+        response.headers.setHeader('Access-Control-Allow-Headers','User-Agent,Authorization,Content-type,Depth,If-match,If-None-Match,Lock-Token,Timeout,Destination,Overwrite,X-client,X-Requested-With')
++        response.headers.setHeader('Access-Control-Allow-Headers','User-Agent,Authorization,Content-type,Depth,If-match,If-None-Match,Lock-Token,Timeout,Destination,Overwrite,Prefer,X-client,X-Requested-With')
 +    if not response.headers.hasHeader('Access-Control-Allow-Credentials'):
 +        response.headers.setHeader('Access-Control-Allow-Credentials','true')
 +    if not response.headers.hasHeader('Access-Control-Expose-Headers'):
-+        response.headers.setHeader('Access-Control-Expose-Headers','Etag')
++        response.headers.setHeader('Access-Control-Expose-Headers','Etag,Preference-Applied')
 +    # end CardDavMATE section
 +
      return response

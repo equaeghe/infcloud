@@ -3,6 +3,27 @@ CardDavMATE Changelog
 
 NOTE: if you are interested in integrated version of CardDavMATE and CalDavZAP (our CalDAV web client) please use InfCloud - http://www.inf-it.com/open-source/clients/infcloud/
 
+version 0.13.0 [2015-09-16]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: if you use a server with cross-domain setup see the modified Access-Control-Allow-Headers and Access-Control-Expose-Headers in readme.txt (or misc/config_davical.txt or misc/calendarserver.diff); you MUST update these headers, otherwise the client will NOT work
+- configuration - added globalEnableRefresh option which enables/disables the new "refresh all resources" icon in the left application menu (disabled by default)
+- configuration - added globalCollectionDisplay, globalCollectionSort and globalContactDataMinVisiblePercentage - these options allow to configure our new fully customizable wide contact list (see config.js)
+- added Chinese localization (zh_CN) - thanks Fandy
+- added shift+login shortcut to ignore settings stored on the server and use the default settings (this functionality was added long time ago, but I forgot to mention about it)
+- added support for "Prefer: return=representation" (and related "Preference-Applied: return=representation") for PUT requests (see http://tools.ietf.org/html/rfc7240); this change REQUIRES update of Access-Control-Allow-Headers and Access-Control-Expose-Headers if cross-domain setup is used
+- added support for automatically expanding fields in the editor (e.g. if you enter a phone number, another phone number field is automatically expanded)
+- added support for multiple street components in a single address field (additional fields are automatically expanded)
+- added an option to specify a remote URL as photo source - use shift+click on a photo box to add an URL
+- added check for unsupported XML 1.0 characters in user entered data - these are replaced by a space character (to prevent client and/or server side parsing errors)
+- added title with version number for the software name/description (login screen)
+- fixed vCard line folding (RFC2426 - section 2.6)
+- changed version checking - use internal build number for software version comparison to support update notification also for beta and rc builds
+- changed initialy enabled collections behaviour - if there are no enabled collections during the login, enable all available collections owned by the logged user
+- changed format and comments in config.js
+- changed storing of user settings (PROPPATCH request) - no server request will be made if there is no change in settings
+- updated jQuery to 2.1.4
+- updated localizations - thanks Niels Bo Andersen [da_DK], Marten Gajda [de_DE], Damian Vila [es_ES], Gabriela Vattier [fr_FR], Luca Ferrario [it_IT], Muimu Nakayama [ja_JP], Johan Vromans [nl_NL], Selcuk Pultar [tr_TR], Александр Симонов [ru_RU], Serge Yakimchuck [uk_UA]
+- other improvements and fixes
 
 version 0.12.1 [2015-03-16]:
 - note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
@@ -309,7 +330,7 @@ version 0.9.1 [2012-01-29]:
 - updated readme.txt
 
 version 0.9.0 [2012-01-10]:
-- note: if you use DAViCal with cross-domain setup you need to update your apache configuration (see misc/config_davical.txt) 
+- note: if you use DAViCal with cross-domain setup you need to update your apache configuration (see misc/config_davical.txt)
 - note: if you use MacOS X Lion calendarserver you need to re-patch your installation (see misc/readme_lion.txt and the changelog below)
 - added support for drag&drop contact move operation (not available if the source or destination collection is read-only)
 - added support for "Delete from Group" (available if an Apple contact group is loaded)
@@ -406,7 +427,7 @@ version 0.7.1 [2011-11-10]:
 
 version 0.7.0 [2011-11-09]:
 - note: this release contains many configuration changes (always use the latest config.js)
-- note: if you use DAViCal you need to update your apache configuration (see misc/config_davical.txt) 
+- note: if you use DAViCal you need to update your apache configuration (see misc/config_davical.txt)
 - note: if you use MacOS X Lion calendarserver you need to re-patch your installation (see misc/readme_lion.txt and the changelog below)
 - configuration - renamed updateInterval option in globalAccountSettings to syncInterval (now the name corresponds to reality)
 - configuration - removed globalReloadCollection setting (use the syncInterval in globalAccountSettings instead)
@@ -465,7 +486,7 @@ version 0.6.0 [2011-10-19]:
 
 version 0.5.2 [2011-10-06]:
 - fixed regular expressions for login matching in deleteVcardFromCollection and putVcardToCollection functions (fixes add/update/delete operations)
-- fixed several CSS issues 
+- fixed several CSS issues
 - added new configuration option globalWithCredentials which sets withCredentials for cross domain queries in jQuery (note: if the value is set to true, use of Access-Control-Allow-Origin "*" is not allowed)
 
 version 0.5.1 [2011-10-03]:

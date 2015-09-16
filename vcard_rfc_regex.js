@@ -234,19 +234,6 @@ vCard.pre['vcardToData_colon_begin_or_end']=RegExp('^:|:$', 'g');
 vCard.pre['vcardToData_before_val']=RegExp('^[^:]+:');
 vCard.pre['accountUidParts']=RegExp('^(https?://)([^@/]+(?:@[^@/]+)?)@([^/]+)(.*/)', 'i');
 
-// Internal processing
-var IntProc = new Object();
-IntProc['last']=RegExp('last','');
-IntProc['_last']=RegExp('.*last','');
-IntProc['first']=RegExp('first','');
-IntProc['_first']=RegExp('.*first','');
-IntProc['middle']=RegExp('middle','');
-IntProc['_middle']=RegExp('.*middle','');
-IntProc['prefix']=RegExp('prefix','');
-IntProc['_prefix']=RegExp('.*prefix','');
-IntProc['suffix']=RegExp('suffix','');
-IntProc['_suffix']=RegExp('.*suffix','');
-
 // Editor
 vCard.tplC['begin']='##:::##group_wd##:::##BEGIN:VCARD\r\n';
 vCard.tplM['begin']=null;

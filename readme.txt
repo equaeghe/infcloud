@@ -61,8 +61,8 @@ What you need to know before you start to configure the client:
       a.) Your server MUST return the following additional HTTP headers:
             Access-Control-Allow-Origin: *
             Access-Control-Allow-Methods: GET, POST, OPTIONS, PROPFIND, PROPPATCH, REPORT, PUT, MOVE, DELETE, LOCK, UNLOCK
-            Access-Control-Allow-Headers: User-Agent, Authorization, Content-type, Depth, If-match, If-None-Match, Lock-Token, Timeout, Destination, Overwrite, X-client, X-Requested-With
-            Access-Control-Expose-Headers: Etag
+            Access-Control-Allow-Headers: User-Agent, Authorization, Content-type, Depth, If-match, If-None-Match, Lock-Token, Timeout, Destination, Overwrite, Prefer, X-client, X-Requested-With
+            Access-Control-Expose-Headers: Etag, Preference-Applied
       b.) If Access-Control-Request-Method header is sent by your browser (preflight request defined by CORS) then your server MUST return these headers for OPTIONS request WITHOUT requiring authorization and MUST return 200 (or 2xx) HTTP code (Success).
     - Howto add these headers to my CardDAV/CalDAV server?
       Check your server documentation or contact your server developer and ask for CORS or custom HTTP headers support.

@@ -60,7 +60,8 @@ function interResourceEditTODO(operation, delUID)
 	var tmp=res.href.match(vCalendar.pre['hrefRex']);
 	var origUID=tmp[1]+res.userAuth.userName+'@'+tmp[2];
 
-	$('#etagTODO').val('');
+	if(operation != 'MOVE_IN')
+		$('#etagTODO').val('');
 	var srcUID=$('#uidTODO').val().substring($('#uidTODO').val().lastIndexOf('/')+1, $('#uidTODO').val().length);
 
 	inputUID=$('#todo_calendar').val()+srcUID;
@@ -129,12 +130,12 @@ function saveTodo(deleteMode)
 		{
 			if((newUID==calUID) || ($('#etagTODO').val()==''))
 				addAndEditTODO(deleteMode);
-			else if(calUID.substring(0, calUID.lastIndexOf('/'))==newUID.substring(0, newUID.lastIndexOf('/')))
-			{
-				var delUID=$('#uidTODO').val();
-				interResourceEditTODO('MOVE_IN',delUID);
-			}
-			else if(calUID.substring(0, calUID.lastIndexOf('/'))!=newUID.substring(0, newUID.lastIndexOf('/')) && $('#etagTODO').val()!='')
+//			else if(calUID.substring(0, calUID.lastIndexOf('/'))==newUID.substring(0, newUID.lastIndexOf('/')))
+//			{
+//				var delUID=$('#uidTODO').val();
+//				interResourceEditTODO('MOVE_IN',delUID);
+//			}
+			else if(/*calUID.substring(0, calUID.lastIndexOf('/'))!=newUID.substring(0, newUID.lastIndexOf('/')) && */ $('#etagTODO').val()!='')
 			{
 				var delUID=$('#uidTODO').val();
 				interResourceEditTODO('MOVE_OTHER',delUID);
@@ -162,7 +163,7 @@ function getRepeatTodoObject(inputRepeatObj)
 	var origTimezone = '';
 	var vCalendarText = inputRepeatObj.vCalendarText;
 	var sel_option = '';
-	var inputTodos=jQuery.grep(globalEventList.displayTodosArray[inputRepeatObj.rid],function(e){if(e.id==inputRepeatObj.uidTodo && (e.repeatCount<2 || !e.repeatCount))return true});
+	var inputTodos=jQuery.grep(globalEventList.displayTodosArray[inputRepeatObj.rid],function(e){if(e.id==inputRepeatObj.uidTodo && ((globalSettings.appleremindersmode.value || e.repeatCount<2) || !e.repeatCount))return true});
 	if(globalSettings.appleremindersmode.value && inputTodos.length==1)
 	{
 		if(inputRepeatObj.recurrenceId!='' || inputRepeatObj.futureStart!='')
@@ -371,7 +372,8 @@ function getRepeatTodoObject(inputRepeatObj)
 		sel_option: sel_option,
 		futureMode:futureMode,
 		appleTodoMode:appleTodoMode,
-		newFirst:newFirst
+		newFirst:newFirst,
+		beginVcalendar:beginVcalendar
 	};
 }
 
@@ -501,7 +503,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 		else if(resultTodoObj.futureMode)
 		{
 			origEvent = vCalendarText;
-			vCalendarText = beginVcalendar;
+			vCalendarText = resultTodoObj.beginVcalendar;
 		}
 	}
 
@@ -809,6 +811,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 	{
 		var interval=$("#repeat_interval_detail_TODO").val();
 		var byDay='';
+		var isCustom=false;
 		var monthDay='';
 		var bymonth='';
 		var wkst='';
@@ -1060,6 +1063,8 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 				}
 			}
 		}
+		else if($('#repeat_TODO option:selected').attr('data-type')=="custom_repeat")
+			isCustom=true;
 
 		if(vCalendar.tplM['VTcontentline_RRULE'][repeatHash]!=null && (process_elem=vCalendar.tplM['VTcontentline_RRULE'][repeatHash][0])!=undefined)
 		{
@@ -1075,32 +1080,36 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 			process_elem=process_elem.replace('##:::##params_wsc##:::##', '');
 		}
 
-		if($('#repeat_end_details_TODO').val()=="on_date")
+		if(!isCustom)
 		{
-			var dateUntil=$.datepicker.parseDate(globalSettings.datepickerformat.value, $('#repeat_end_date_TODO').val());
-			var datetime_until='';
-			if($('#todo_type').val()=='start')
-				var tForR=new Date(Date.parse("01/02/1990, "+$('#time_fromTODO').val()));
-			else
-				var tForR=new Date(Date.parse("01/02/1990, "+$('#time_toTODO').val()));
-			dateUntil.setHours(tForR.getHours());
-			dateUntil.setMinutes(tForR.getMinutes());
-			dateUntil.setSeconds(tForR.getSeconds());
-			if(globalSettings.timezonesupport.value && sel_option in timezones)
-				var valOffsetFrom=getOffsetByTZ(sel_option, dateUntil);
-			if(valOffsetFrom)
+			if($('#repeat_end_details_TODO').val()=="on_date")
 			{
-				var intOffset=valOffsetFrom.getSecondsFromOffset()*1000*-1;
-				dateUntil.setTime(dateUntil.getTime()+intOffset);
+				var dateUntil=$.datepicker.parseDate(globalSettings.datepickerformat.value, $('#repeat_end_date_TODO').val());
+				var datetime_until='';
+				if($('#todo_type').val()=='start')
+					var tForR=new Date(Date.parse("01/02/1990, "+$('#time_fromTODO').val()));
+				else
+					var tForR=new Date(Date.parse("01/02/1990, "+$('#time_toTODO').val()));
+				dateUntil.setHours(tForR.getHours());
+				dateUntil.setMinutes(tForR.getMinutes());
+				dateUntil.setSeconds(tForR.getSeconds());
+				if(globalSettings.timezonesupport.value && sel_option in timezones)
+					var valOffsetFrom=getOffsetByTZ(sel_option, dateUntil);
+				if(valOffsetFrom)
+				{
+					var intOffset=valOffsetFrom.getSecondsFromOffset()*1000*-1;
+					dateUntil.setTime(dateUntil.getTime()+intOffset);
+				}
+				datetime_until=$.fullCalendar.formatDate(dateUntil, "yyyyMMdd'T'HHmmss'Z'");
+				process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+";UNTIL="+datetime_until+bymonth+monthDay+byDay+wkst);
 			}
-			datetime_until=$.fullCalendar.formatDate(dateUntil, "yyyyMMdd'T'HHmmss'Z'");
-			process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+";UNTIL="+datetime_until+bymonth+monthDay+byDay+wkst);
+			else if($('#repeat_end_details_TODO').val()=="after")
+				process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+";COUNT="+(parseInt($('#repeat_end_after_TODO').val()))+bymonth+monthDay+byDay+wkst);
+			else
+				process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+bymonth+monthDay+byDay+wkst);
 		}
-		else if($('#repeat_end_details_TODO').val()=="after")
-			process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+";COUNT="+(parseInt($('#repeat_end_after_TODO').val()))+bymonth+monthDay+byDay+wkst);
 		else
-			process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue("FREQ="+frequency)+interval+bymonth+monthDay+byDay+wkst);
-
+			process_elem=process_elem.replace('##:::##value##:::##', $('#repeat_TODO').val());
 		vCalendarText+=process_elem;
 
 		if(realTodo.repeatStart || realTodo.repeatEnd)
@@ -1347,7 +1356,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 					}
 					process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue('DISPLAY'));
 					alarmText+=process_elem;
-					/*
+					
 					if(vCalendar.tplM['VTcontentline_DESCRIPTION']!=null && (process_elem=vCalendar.tplM['VTcontentline_DESCRIPTION'][0])!=undefined)
 					{
 						parsed=('\r\n'+process_elem).match(RegExp('\r\n((?:'+vCalendar.re['group']+'\\.)?)', 'm'));
@@ -1360,9 +1369,9 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 						process_elem=process_elem.replace('##:::##group_wd##:::##', '');
 						process_elem=process_elem.replace('##:::##params_wsc##:::##', '');
 					}
-					process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue('Bazzinga!!'));
-					vCalendarText+=process_elem;
-					*/
+					process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue('Reminder'));
+					alarmText+=process_elem;
+					
 				}
 
 				if(typeof vCalendar.tplM['VTunprocessedVALARM'][repeatHash]!='undefined' && vCalendar.tplM['VTunprocessedVALARM'][repeatHash]!='' && vCalendar.tplM['VTunprocessedVALARM'][repeatHash]!=null)
@@ -1630,7 +1639,7 @@ function todoToVcalendar(operation, accountUID, inputUID, inputEtag, delUID, del
 				var intOffset = valOffsetFrom.getSecondsFromOffset()*-1;
 				datetime_completed = new Date(datetime_completed.setSeconds(intOffset));
 			}
-			var newValue=$.fullCalendar.formatDate(datetime_completed, "yyyyMMdd'T'HHmmss")+(sel_option!='local' ? 'Z' : '');
+			var newValue=$.fullCalendar.formatDate(datetime_completed, "yyyyMMdd'T'HHmmss")+'Z';
 
 			process_elem=process_elem.replace('##:::##value##:::##', vcalendarEscapeValue(newValue));
 			vCalendarText+=process_elem;
@@ -2775,11 +2784,11 @@ function vcalendarTodoData(inputCollection, inputEvent, isNew)
 		if(vcalendar_element!=null)
 		{
 			parsed=vcalendar_element[0].match(vCalendar.pre['contentline_parse']);
-			if(parsed[4].indexOf('BYSETPOS')!=-1 || parsed[4].indexOf('BYWEEKNO')!=-1)
-			{
-				console.log("Error:'"+inputEvent.uid+"': Unsupported recurrence rule in todo:"+vcalendar);
-				return false;
-			}
+//			if(parsed[4].indexOf('BYSETPOS')!=-1 || parsed[4].indexOf('BYWEEKNO')!=-1)
+//			{
+//				console.log("Error:'"+inputEvent.uid+"': Unsupported recurrence rule in todo:"+vcalendar);
+//				return false;
+//			}
 			pars=parsed[4].split(';');
 			var parString='';
 			if(pars.length>0)
@@ -3398,26 +3407,15 @@ function vcalendarTodoData(inputCollection, inputEvent, isNew)
 			if(globalAppleSupport.nextDates[inputEvent.uid]!=undefined)
 				delete globalAppleSupport.nextDates[inputEvent.uid];
 			var ruleString=vcalendar.match(vCalendar.pre['contentline_RRULE2'])[0].match(vCalendar.pre['contentline_parse'])[4];
-			var isSpecialRule=false;
-			if(ruleString.indexOf('BYMONTH=')!=-1 || ruleString.indexOf('BYMONTHDAY=')!=-1 || ruleString.indexOf('BYDAY=')!=-1)
-				isSpecialRule=true;
 			inputEvent.isRepeat=true;
-			var staticDate='';
+
 			if(realStart)
-			{
-				var staticDate=realStart;
 				var varDate=new Date($.fullCalendar.parseDate(realStart).getTime());
-			}
 			else if(realEnd)
-			{
-				var staticDate=$.fullCalendar.parseDate(realEnd);
 				var varDate=new Date($.fullCalendar.parseDate(realEnd).getTime());
-			}
 
 			if(realEnd)
 				var varEndDate=new Date($.fullCalendar.parseDate(realEnd).getTime());
-	//		else
-	//			var varEndDate=new Date(end.getTime());
 
 			var lastGenDate='';
 			var repeatStart='', repeatEnd='';
@@ -3471,8 +3469,7 @@ function vcalendarTodoData(inputCollection, inputEvent, isNew)
 				}
 				else
 				{
-					if(!isSpecialRule)
-						untilDate=giveMeUntilDate(varDate, until, frequency, interval, all);
+					untilDate='';
 					realUntil=until;
 
 				}
@@ -3486,693 +3483,32 @@ function vcalendarTodoData(inputCollection, inputEvent, isNew)
 				inputEvent.untilDate='never';
 			}
 			var repeatCount=0, realRepeatCount=0;
-			var monthPlus=0, dayPlus=0;
 
-			if(frequency=="DAILY\r\n" || frequency=="DAILY")
-			{
-				monthPlus=0,
-				dayPlus=1;
-			}
-			else if(frequency=="WEEKLY\r\n" || frequency=="WEEKLY")
-			{
-				monthPlus=0,
-				dayPlus=7;
-			}
-			else if(frequency=="MONTHLY\r\n" || frequency=="MONTHLY")
-			{
-				monthPlus=1,
-				dayPlus=0;
-			}
-			else if(frequency=="YEARLY\r\n" || frequency=="YEARLY")
-			{
-				monthPlus=12,
-				dayPlus=0;
-			}
-			if(!inputEvent.isDrawn)
-			{
-				if(repeatStart=='' || repeatEnd=='')
-					realRepeatCount++;
-				var checkRec=false;
 
-				if(repeatStart=='')
-				{
-					if(globalSettings.timezonesupport.value && tzName in timezones)
-						valOffsetFrom=getOffsetByTZ(tzName, varDate);
+			var repeatLimit = new Date(globalToLoadedLimitTodo.getTime());
+			repeatLimit.setMonth(repeatLimit.getMonth() + 2);
 
-					var newDateEnd=new Date(varDate.getTime());
-					if(valOffsetFrom)
-					{
-						intOffset=(getLocalOffset(newDateEnd)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-						newDateEnd.setTime(newDateEnd.getTime()+intOffset);
-					}
-					if(recurrence_id_array.length>0)
-					{
-						for(var ir=0;ir<recurrence_id_array.length;ir++)
-						{
-							var recString = recurrence_id_array[ir].split(';')[0];
-							if(recString.charAt(recString.length-1)=='Z')
-							{
-								if(globalSettings.timezonesupport.value && tzName in timezones)
-								{
-									var recValOffsetFrom=getOffsetByTZ(tzName, varDate);
-									var recTime = new Date(recString.parseComnpactISO8601().getTime());
-									if(recValOffsetFrom)
-									{
-										var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-										recTime.setTime(recTime.getTime()+rintOffset);
-									}
-									if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == varDate+stringUID)
-										checkRec=true;
-								}
-							}
-							else
-							{
-								if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == varDate+stringUID)
-									checkRec=true;
-							}
-						}
-					}
-
-					if(exDates.length>0)
-						if(exDates.indexOf(newDateEnd.toString())!=-1)
-							checkRec=true;
-					if(!checkRec)
-					{
-						if(alertTime.length>0)
-						{
-							var aTime='',
-							now='';
-							if(!inputCollection.ignoreAlarms)
-								for(var u=0;u<alertTime.length;u++)
-								{
-									if((alertTime[u].charAt(0)=='-') || (alertTime[u].charAt(0)=='+'))
-									{
-										aTime=end.getTime();
-
-										var dur=parseInt(alertTime[u].substring(1, alertTime[u].length-1));
-										if(alertTime[u].charAt(0)=='-')
-											aTime=aTime-dur;
-										else
-											aTime=aTime+dur;
-
-										var now=new Date();
-									}
-									else
-									{
-										aTime=$.fullCalendar.parseDate(alertTime[u]);
-										now=new Date();
-									}
-
-									if(aTime>now)
-									{
-										var delay=aTime-now;
-										if(maxAlarmValue<delay)
-											delay=maxAlarmValue;
-										alertTimeOut[alertTimeOut.length]=setTimeout(function(){
-												showAlertTODO(inputEvent.uid, (aTime-now),{start:end, title:title, status:status});
-										}, delay);
-									}
-								}
-						}
-						repeatCount++;
-						firstDateSaved = true;
-						tmpObj = new todoItems(start,newDateEnd, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location,  note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn, toIt, priority,renderPriority, finalAString);
-						if(isChange)
-							globalCalTodo=tmpObj;
-						preTodoArray.splice(preTodoArray.length, 0, tmpObj);
-					}
-					isFirstTimeRepeat=true;
-				}
-			}
-
-			var rCount = 0, dayDifference=0;
+			var dayDifference=0;
 			if(realEnd)
 				dayDifference=varEndDate.getTime()-varDate.getTime();
-			var iterator=0;
-			var lastYear=0;
-			var dateStart,dateEnd;
-			var prevRealStart='',prevDateStart='';
-			if(isSpecialRule)
-			{
-				if(pars.length>0)
-				{
-					if(repeatStart)
-						var resStart=new Date($.fullCalendar.parseDate(realStart).getTime());
-					else if(repeatEnd)
-						var resStart=new Date($.fullCalendar.parseDate(realEnd).getTime());
-
-					if(pars.indexElementOf('BYMONTH=')!=-1 && pars.indexElementOf('BYMONTHDAY=')==-1 && pars.indexElementOf('BYDAY=')==-1)
-						pars[pars.length] = "BYMONTHDAY="+resStart.getDate();
-					var repeatLimit = new Date(globalToLoadedLimitTodo.getTime());
-					repeatLimit.setMonth(repeatLimit.getMonth() + 2);
-					var objR=processRule(vcalendar,resStart,pars.slice(),[resStart],frequencies.indexOf(frequency), repeatLimit,interval,inputEvent.uid,rCount,resStart,wkst)
-					dates=objR.dates;
-					if(repeatStart)
-						dates.splice(0,0,resStart);
-					rCount=objR.rCount;
-				}
-				var itStart=0;
-				if(repeatStart=='')
-					itStart=1;
-				for(var idt=itStart;idt<dates.length;idt++)
-				{
-					if(repeatEnd!='' && repeatStart!='')
-					{
-						varDate=new Date(dates[idt].getTime());
-						varEndDate=new Date(varDate.getTime()+dayDifference);
-					}
-					else if(repeatEnd=='' && repeatStart!='')
-					{
-						varDate=new Date(dates[idt].getTime());
-						if(idt<=(dates.length-2))
-						{
-							varEndDate=new Date(dates[idt+1].getTime());
-							varEndDate.setMinutes(varEndDate.getMinutes()-1);
-						}
-					}
-					else if(repeatEnd!='' && repeatStart=='')
-					{
-						varEndDate=new Date(dates[idt].getTime());
-						if(idt>0)
-						{
-							varDate=new Date(dates[idt-1].getTime());
-							varDate.setMinutes(varDate.getMinutes()+1);
-						}
-					}
-					prevRealStart = new Date(varDate.getTime());
-					if((!globalSettings.appleremindersmode.value || todoArray.length>1) && (varDate.getTime()-globalToLoadedLimitTodo.getTime())>=0)
-						break;
-					if(untilDate)
-						var count=untilDate-varDate;
-					else
-						var count = until - realRepeatCount;
-					if(isUntilDate&&count<0 || !isUntilDate&&count<=0)
-						break;
-					else
-					{
-						iterator++;
-						if(frequency=="YEARLY")
-						{
-							if(lastYear!=varDate.getFullYear())
-							{
-								lastYear=varDate.getFullYear();
-								if(lastYear>0 && rCount%interval!=0)
-								{
-									rCount++;
-									continue;
-								}
-								rCount++;
-							}
-						}
-						realRepeatCount++;
-
-						if(globalSettings.timezonesupport.value && tzName in timezones)
-							valOffsetFrom=getOffsetByTZ(tzName, varDate);
-
-
-						realStart=new Date(varDate.getTime());
-						dateStart=new Date(varDate.getTime());
-
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							dateStart.setTime(dateStart.getTime()+intOffset);
-						}
-
-						realEnd=new Date(varEndDate.getTime());
-						dateEnd=new Date(varEndDate.getTime());
-
-						if(intOffset)
-							dateEnd.setTime(dateEnd.getTime()+intOffset);
-
-						if(repeatStart!='')
-						{
-							if(recurrence_id_array.length>0)
-							{
-								var checkCont = false;
-								for(var ir=0;ir<recurrence_id_array.length;ir++)
-								{
-									var recString = recurrence_id_array[ir].split(';')[0];
-									if(recString.charAt(recString.length-1)=='Z')
-									{
-										if(globalSettings.timezonesupport.value && tzName in timezones)
-										{
-											var recValOffsetFrom=getOffsetByTZ(tzName, $.fullCalendar.parseDate(realStart));
-											var recTime = new Date(recString.parseComnpactISO8601().getTime());
-											if(recValOffsetFrom)
-											{
-												var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-												recTime.setTime(recTime.getTime()+rintOffset);
-											}
-											if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realStart)+stringUID)
-												checkCont=true;
-										}
-									}
-									else
-									{
-										if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realStart)+stringUID)
-											checkCont=true;
-									}
-								}
-								if(checkCont)
-									continue;
-							}
-							if(exDates.length>0)
-								if(exDates.indexOf(dateStart.toString())!=-1)
-									continue;
-						}
-						else
-						{
-							if(recurrence_id_array.length>0)
-							{
-								var checkCont = false;
-								for(var ir=0;ir<recurrence_id_array.length;ir++)
-								{
-									var recString = recurrence_id_array[ir].split(';')[0];
-									if(recString.charAt(recString.length-1)=='Z')
-									{
-										if(globalSettings.timezonesupport.value && tzName in timezones)
-										{
-											var recValOffsetFrom=getOffsetByTZ(tzName, $.fullCalendar.parseDate(realEnd));
-											var recTime = new Date(recString.parseComnpactISO8601().getTime());
-											if(recValOffsetFrom)
-											{
-												var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-												recTime.setTime(recTime.getTime()+rintOffset);
-											}
-											if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realEnd)+stringUID)
-												checkCont=true;
-										}
-									}
-									else
-									{
-										if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realEnd)+stringUID)
-											checkCont=true;
-									}
-								}
-								if(checkCont)
-									continue;
-							}
-							if(exDates.length>0)
-								if(exDates.indexOf(dateEnd.toString())!=-1)
-									continue;
-						}
-
-						if(alertTime.length>0)
-						{
-							var repeatAlarm='',
-							myVarDate='',
-							alertString='';
-							if(!inputCollection.ignoreAlarms)
-								for(var v=0;v<alertTime.length;v++)
-								{
-									if((alertTime[v].charAt(0)=='-') || (alertTime[v].charAt(0)=='+'))
-									{
-										aTime=dateEnd.getTime();
-
-										var dur=parseInt(alertTime[v].substring(1, alertTime[v].length-1));
-										if(alertTime[v].charAt(0)=='-')
-											aTime=aTime-dur;
-										else
-											aTime=aTime+dur;
-
-										var now=new Date();
-										if(aTime>now)
-										{
-											var delay=aTime-now;
-											if(maxAlarmValue<delay)
-												delay=maxAlarmValue;
-											alertTimeOut[alertTimeOut.length]=setTimeout(function(){
-													showAlertTODO(inputEvent.uid, (aTime-now),{start:dateStart, title:title, status:status});
-											}, delay);
-										}
-									}
-								}
-						}
-
-						repeatCount++;
-						if(globalSettings.appleremindersmode.value && firstDateSaved && todoArray.length==1)
-						{
-							globalAppleSupport.nextDates[inputEvent.uid] =  new Date(dateEnd.getTime());
-							break;
-						}
-						firstDateSaved = true;
-						tmpObj=new todoItems(dateStart, dateEnd, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn, toIt, priority,renderPriority, finalAString);
-						preTodoArray.splice(preTodoArray.length, 0, tmpObj);
-						lastGenDate = new Date(dateStart.getTime());
-					}
-				}
-				if(repeatEnd=='')
-				{
-					var checkCont = false;
-					if(exDates.length>0)
-						if(exDates.indexOf(newDateEnd.toString())!=-1)
-							checkRec=true;
-					if(recurrence_id_array.length>0)
-					{
-						for(var ir=0;ir<recurrence_id_array.length;ir++)
-						{
-							var recString = recurrence_id_array[ir].split(';')[0];
-							if(recString.charAt(recString.length-1)=='Z')
-							{
-								if(globalSettings.timezonesupport.value && tzName in timezones)
-								{
-									var recValOffsetFrom=getOffsetByTZ(tzName, $.fullCalendar.parseDate(prevRealStart));
-									var recTime = new Date(recString.parseComnpactISO8601().getTime());
-									if(recValOffsetFrom)
-									{
-										var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-										recTime.setTime(recTime.getTime()+rintOffset);
-									}
-									if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(prevRealStart)+stringUID)
-										checkCont=true;
-								}
-							}
-							else
-							{
-								if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(prevRealStart)+stringUID)
-									checkCont=true;
-							}
-						}
-					}
-					if(!checkCont)
-					{
-						if(alertTime.length>0)
-						{
-							var repeatAlarm='',
-							myVarDate='',
-							alertString='';
-							if(!inputCollection.ignoreAlarms)
-								for(var v=0;v<alertTime.length;v++)
-								{
-									if((alertTime[v].charAt(0)=='-') || (alertTime[v].charAt(0)=='+'))
-									{
-										aTime=varDate.getTime();
-
-										var dur=parseInt(alertTime[v].substring(1, alertTime[v].length-1));
-										if(alertTime[v].charAt(0)=='-')
-											aTime=aTime-dur;
-										else
-											aTime=aTime+dur;
-
-										var now=new Date();
-									}
-									else
-									{
-										aTime=$.fullCalendar.parseDate(alertTime[v]);
-										now=new Date();
-									}
-
-									if(aTime>now)
-									{
-										var delay=aTime-now;
-										if(maxAlarmValue<delay)
-											delay=maxAlarmValue;
-										alertTimeOut[alertTimeOut.length]=setTimeout(function(){
-												showAlertTODO(inputEvent.uid, (aTime-now),{start:repeatStart, title:title, status:status});
-										}, delay);
-									}
-								}
-						}
-						repeatCount++;
-						if(globalSettings.timezonesupport.value && tzName in timezones)
-							valOffsetFrom=getOffsetByTZ(tzName, varDate);
-
-						if(prevRealStart=='')
-							prevRealStart=new Date(varDate.getTime());
-
-						prevDateStart=new Date(prevRealStart.getTime());
-
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(prevDateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							prevDateStart.setTime(prevDateStart.getTime()+intOffset);
-						}
-						firstDateSaved=true;
-						tmpObj=new todoItems(prevDateStart, end, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash, percent, inputEvent.displayValue, rid, compareString, tzName, prevRealStart, realEnd, alertTimeOut,classType,url,completedOn, toIt, priority,renderPriority, finalAString);
-						if(isChange)
-							globalCalTodo=tmpObj;
-						preTodoArray.splice(preTodoArray.length, 0, tmpObj);
-						lastGenDate = new Date(varDate.getTime());
-					}
-				}
-			}
-			else
-			{
-				var rtDate='';
-				var prevStart=new Date(varDate.getTime());
-				var counterRepeat=0;
-				if(repeatStart!='')
-					rtDate=new Date($.fullCalendar.parseDate(repeatStart).getTime());
-				else if(repeatEnd!='')
-					rtDate=new Date($.fullCalendar.parseDate(repeatEnd).getTime());
-				while(true)
-				{
-					if(counterRepeat>0)
-					{
-						if(globalSettings.timezonesupport.value && tzName in timezones)
-						{
-							valOffsetFrom=getOffsetByTZ(tzName, prevStart,inputEvent.uid);
-						}
-
-						if(repeatEnd!='' && repeatStart!='')
-						{
-							dateStart=new Date(prevStart.getTime());
-							dateEnd=new Date(dateStart.getTime()+dayDifference);
-						}
-						else if(repeatEnd=='' && repeatStart!='')
-						{
-							dateStart=new Date(prevStart.getTime());
-							dateEnd=new Date(varDate.getTime());
-							dateEnd.setMinutes(dateEnd.getMinutes()-1);
-						}
-						else if(repeatEnd!='' && repeatStart=='')
-						{
-							dateEnd=new Date(varDate.getTime());
-							dateStart=new Date(prevStart.getTime());
-							dateStart.setMinutes(dateStart.getMinutes()+1);
-						}
-
-						var recIDfound=false;
-
-						realStart=new Date(dateStart.getTime());
-
-						if(valOffsetFrom)
-						{
-							intOffset=(getLocalOffset(dateStart)*-1*1000)-valOffsetFrom.getSecondsFromOffset()*1000;
-							dateStart.setTime(dateStart.getTime()+intOffset);
-						}
-						realEnd=new Date(dateEnd.getTime());
-						if(intOffset)
-							dateEnd.setTime(dateEnd.getTime()+intOffset);
-						if(repeatStart!='')
-						{
-							if(recurrence_id_array.length>0)
-							{
-								for(var ir=0;ir<recurrence_id_array.length;ir++)
-								{
-									var recString = recurrence_id_array[ir].split(';')[0];
-									if(recString.charAt(recString.length-1)=='Z')
-									{
-										if(globalSettings.timezonesupport.value && tzName in timezones)
-										{
-											var recValOffsetFrom=getOffsetByTZ(tzName, $.fullCalendar.parseDate(realStart));
-											var recTime = new Date(recString.parseComnpactISO8601().getTime());
-											if(recValOffsetFrom)
-											{
-												var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-												recTime.setTime(recTime.getTime()+rintOffset);
-											}
-											if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realStart)+stringUID)
-												recIDfound=true;
-										}
-									}
-									else
-									{
-										if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realStart)+stringUID)
-											recIDfound=true;
-									}
-								}
-							}
-							if(exDates.length>0)
-								if(exDates.indexOf(dateStart.toString())!=-1)
-									recIDfound=true;
-						}
-						else
-						{
-							if(recurrence_id_array.length>0)
-							{
-								for(var ir=0;ir<recurrence_id_array.length;ir++)
-								{
-									var recString = recurrence_id_array[ir].split(';')[0];
-									if(recString.charAt(recString.length-1)=='Z')
-									{
-										if(globalSettings.timezonesupport.value && tzName in timezones)
-										{
-											var recValOffsetFrom=getOffsetByTZ(tzName, $.fullCalendar.parseDate(realEnd));
-											var recTime = new Date(recString.parseComnpactISO8601().getTime());
-											if(recValOffsetFrom)
-											{
-												var rintOffset=recValOffsetFrom.getSecondsFromOffset()*1000;
-												recTime.setTime(recTime.getTime()+rintOffset);
-											}
-											if(recTime.toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realEnd)+stringUID)
-												recIDfound=true;
-										}
-									}
-									else
-									{
-										if(recString.parseComnpactISO8601().toString()+recurrence_id_array[ir].split(';')[1] == $.fullCalendar.parseDate(realEnd)+stringUID)
-											recIDfound=true;
-									}
-								}
-							}
-
-							if(exDates.length>0)
-								if(exDates.indexOf(dateEnd.toString())!=-1)
-									recIDfound=true;
-						}
-						realRepeatCount++;
-						if(repeatStart=='')
-							iterator++;
-						if(!recIDfound && (iterator%interval)==0)
-						{
-							repeatCount++;
-							if(alertTime.length>0)
-							{
-								var repeatAlarm='',
-								myVarDate='',
-								alertString='';
-								if(!inputCollection.ignoreAlarms)
-									for(var v=0;v<alertTime.length;v++)
-									{
-										if((alertTime[v].charAt(0)=='-') || (alertTime[v].charAt(0)=='+'))
-										{
-											aTime=dateEnd.getTime();
-
-											var dur=parseInt(alertTime[v].substring(1, alertTime[v].length-1));
-											if(alertTime[v].charAt(0)=='-')
-												aTime=aTime-dur;
-											else
-												aTime=aTime+dur;
-
-											var now=new Date();
-											if(aTime>now)
-											{
-												var delay=aTime-now;
-												if(maxAlarmValue<delay)
-													delay=maxAlarmValue;
-												alertTimeOut[alertTimeOut.length]=setTimeout(function(){
-														showAlertTODO(inputEvent.uid, (aTime-now),{start:dateStart, title:title, status:status});
-												}, delay);
-											}
-										}
-									}
-							}
-							prevDateStart=new Date(dateStart.getTime());
-							prevRealStart=new Date($.fullCalendar.parseDate(realStart).getTime());
-							if(globalSettings.appleremindersmode.value && firstDateSaved && todoArray.length==1)
-							{
-								globalAppleSupport.nextDates[inputEvent.uid] =  new Date(dateEnd.getTime());
-								break;
-							}
-							firstDateSaved = true;
-							var tmpObj=new todoItems(dateStart,dateEnd, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status,filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn,toIt, priority,renderPriority, finalAString);
-
-							preTodoArray.splice(preTodoArray.length, 0, tmpObj);
-							lastGenDate = new Date(dateStart.getTime());
-						}
-						if(repeatStart!='')
-							iterator++;
-					}
-					counterRepeat++;
-					prevStart=new Date(varDate.getTime());
-
-					var dayNumberDate=rtDate.getDate()+dayPlus;
-
-					if(dayPlus==0 && monthPlus==1)
-						dayNumberDate=getValidRepeatDay(rtDate,staticDate);
-
-					if(rtDate.getDate()>=dayNumberDate)
-					{
-						rtDate.setDate(dayNumberDate);
-						rtDate.setMonth(rtDate.getMonth()+monthPlus);
-					}
-					else
-					{
-						rtDate.setMonth(rtDate.getMonth()+monthPlus);
-						rtDate.setDate(dayNumberDate);
-					}
-
-					varDate=new Date(rtDate.getTime());
-					if(((!globalSettings.appleremindersmode.value) || todoArray.length>1) && (prevStart.getTime()-globalToLoadedLimitTodo.getTime())>=0)
-						break;
-					var count=untilDate-prevStart;
-					if(count<0)
-						break;
-				}
-			if(repeatStart==''&&interval==1)
-					globalEventList.displayTodosArray[rid].splice(globalEventList.displayTodosArray[rid].length-1,1);
-				if(repeatEnd=='')
-				{
-					if(alertTime.length>0)
-					{
-						var repeatAlarm='',
-						myVarDate='',
-						alertString='';
-						if(!inputCollection.ignoreAlarms)
-							for(var v=0;v<alertTime.length;v++)
-							{
-								if((alertTime[v].charAt(0)=='-') || (alertTime[v].charAt(0)=='+'))
-								{
-									aTime=prevStart.getTime();
-
-									var dur=parseInt(alertTime[v].substring(1, alertTime[v].length-1));
-									if(alertTime[v].charAt(0)=='-')
-										aTime=aTime-dur;
-									else
-										aTime=aTime+dur;
-
-									var now=new Date();
-								}
-								else
-								{
-									aTime=$.fullCalendar.parseDate(alertTime[v]);
-									now=new Date();
-								}
-
-								if(aTime>now)
-								{
-									var delay=aTime-now;
-									if(maxAlarmValue<delay)
-										delay=maxAlarmValue;
-									alertTimeOut[alertTimeOut.length]=setTimeout(function(){
-											showAlertTODO(inputEvent.uid, (aTime-now),{start:repeatStart, title:title, status:status});
-									}, delay);
-								}
-							}
-					}
-					realRepeatCount--;
-					globalEventList.displayTodosArray[rid].splice(globalEventList.displayTodosArray[rid].length-1,1);
-					firstDateSaved = true;
-					tmpObj=new todoItems(prevDateStart, end, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount,byDay, location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash, percent, inputEvent.displayValue, rid, compareString, tzName, prevRealStart, realEnd, alertTimeOut,classType,url,completedOn,toIt, priority,renderPriority, finalAString);
-					if(isChange)
-						globalCalTodo=tmpObj;
-					preTodoArray.splice(preTodoArray.length, 0, tmpObj);
-					lastGenDate = new Date(prevStart.getTime());
-				}
-			}
-			var checkRepeat=false;
-			for(var it=0;it<globalEventList.repeatableTodo.length;it++)
-				if(globalEventList.repeatableTodo[it].uid==inputEvent.uid)
-				{
-					checkRepeat=true;
-					break;
-				}
-
-			if(!checkRepeat)
-				globalEventList.repeatableTodo.splice(globalEventList.repeatableTodo.length, 0,
-				{collection: inputCollection, wkst:wkst,lastYear:lastYear,rCount:rCount,rulePartsArray:pars.slice(),lastGenDate:lastGenDate,start: start, end:end, title: title, rid: rid, note: note, displayValue: inputEvent.displayValue, alertTime: alertTime, alertNote: alertNote, frequency: frequency, interval: interval, location: location, realUntil: realUntil, realUntilDate: realUntilDate, byMonthDay: byMonthDay,realRepeatCount:realRepeatCount, repeatCount: repeatCount, uid: inputEvent.uid, vcalendar: vcalendar, etag: inputEvent.etag, isDrawn: true,alertTimeOut:alertTimeOut, tzName:tzName, realStart:repeatStart, realEnd:repeatEnd, byDay:byDay, rec_id:rec_id, recurrence_id_array:recurrence_id_array, exDates:exDates,stringUID:stringUID, classType:classType, location:location, percent:percent, status:status, filterStatus:filterStatus, repeatHash:repeatHash, url:url, completedOn:completedOn, repeatStart:repeatStart, repeatEnd:repeatEnd, sequence:toIt, priority:priority, renderPriority :renderPriority});
+			var lastGenDate=generateTodoRepeatInstances({
+				dayDifference:dayDifference,
+				untilDate:realUntilDate,
+				repeatStart:repeatStart,
+				repeatEnd:repeatEnd,
+				futureRLimit:repeatLimit,
+				stringUID:stringUID,
+				recurrence_id_array:recurrence_id_array,
+				exDates:exDates,
+				alertTime:alertTime,
+				ignoreAlarms:inputCollection.ignoreAlarms,
+				isChange:isChange,
+				todoArray:todoArray,
+				preTodoArray:preTodoArray,
+				realRepeatCount:realRepeatCount,
+				repeatCount:repeatCount,
+				items:new todoItems(start,end, realUntilDate, frequency, interval, realUntil, wkst,  repeatStart, repeatEnd, repeatCount, realRepeatCount, byDay, location,  note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn, toIt, priority,renderPriority, finalAString,ruleString)
+			});
 		}
 		else
 		{
@@ -4181,50 +3517,10 @@ function vcalendarTodoData(inputCollection, inputEvent, isNew)
 				var ttt = $.fullCalendar.parseDate(end);
 				end=new Date(ttt.getTime());
 			}
-			if(alertTime.length>0)
-			{
-				for(var x=0;x<alertTime.length;x++)
-				{
-					var now='',
-					aTime='';
-					if(alertTime[x].charAt(0)=='-' || alertTime[x].charAt(0)=='+')
-					{
-						if(end!='')
-						{
-							aTime=$.fullCalendar.parseDate(end);
-							aTime=aTime.getTime();
-							var dur=parseInt(alertTime[x].substring(1, alertTime[x].length-1));
+			if(!inputCollection.ignoreAlarms)
+				alertTimeOut=setAlertTimeouts(true, alertTime, start,end, {title:title, status:status},true, inputEvent.uid);
 
-							if(alertTime[x].charAt(0)=='-')
-								aTime=aTime-dur;
-							else
-								aTime=aTime+dur;
-
-							now=new Date();
-						}
-					}
-					else
-					{
-						aTime=$.fullCalendar.parseDate(alertTime[x]);
-						now=new Date();
-					}
-
-					if(aTime>now)
-					{
-						var delay=aTime-now;
-
-						if(maxAlarmValue<delay)
-							delay=maxAlarmValue;
-						var resStart='';
-						if(realStart!='')
-							resStart=start;
-						else if(realEnd!='')
-							resStart=end;
-						alertTimeOut[alertTimeOut.length]=setTimeout(function(){showAlertTODO(inputEvent.uid, (aTime-now), {start:resStart, allDay:all, title:title, status:status});}, delay);
-					}
-				}
-			}
-			var tmpObj=new todoItems(start, end, '', '', '', '', '',  '', '', '', '', '', location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn,toIt, priority,renderPriority, finalAString);
+			var tmpObj=new todoItems(start, end, '', '', '', '', '',  '', '', '', '', '', location, note, title, inputEvent.uid, vcalendar, inputEvent.etag, alertTime, alertNote, status, filterStatus, rec_id, repeatHash,  percent, inputEvent.displayValue, rid, compareString, tzName, realStart, realEnd, alertTimeOut,classType,url,completedOn,toIt, priority,renderPriority, finalAString,'');
 			preTodoArray.splice(preTodoArray.length, 0, tmpObj);
 			if(isChange)
 				globalCalTodo=tmpObj;

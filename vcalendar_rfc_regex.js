@@ -161,6 +161,7 @@ vCalendar.re['bymolist']=vCalendar.re['monthnum']+'(?:,'+vCalendar.re['monthnum'
 vCalendar.re['bysplist']=vCalendar.re['yeardaynum']+'(?:,'+vCalendar.re['yeardaynum']+')*';
 vCalendar.re['dtstval']='(?:'+vCalendar.re['date-value']+'|'+vCalendar.re['date-time-value']+')';
 vCalendar.re['recur']='(?:FREQ='+vCalendar.re['freq']+'|;UNTIL='+vCalendar.re['dtstval']+'|;COUNT='+vCalendar.re['DIGIT']+'+|;INTERVAL='+vCalendar.re['DIGIT']+'+|;BYSECOND='+vCalendar.re['byseclist_byminlist']+'|;BYMINUTE='+vCalendar.re['byseclist_byminlist']+'|;BYHOUR='+vCalendar.re['byhrlist']+'|;BYDAY='+vCalendar.re['bywdaylist']+'|;BYMONTHDAY='+vCalendar.re['bymodaylist']+'|;BYYEARDAY='+vCalendar.re['byyrdaylist']+'|;BYWEEKNO='+vCalendar.re['bywknolist']+'|;BYMONTH='+vCalendar.re['bymolist']+'|;BYSETPOS='+vCalendar.re['bysplist']+'|;WKST='+vCalendar.re['weekday']+'|;'+vCalendar.re['x-name']+'='+vCalendar.re['text-value']+')*';
+vCalendar.re['recurCaldav']='^(?:FREQ='+vCalendar.re['freq']+'|;UNTIL='+vCalendar.re['dtstval']+'|;COUNT='+vCalendar.re['DIGIT']+'+|;INTERVAL='+vCalendar.re['DIGIT']+'+|;BYDAY='+vCalendar.re['bywdaylist']+'|;BYMONTHDAY='+vCalendar.re['bymodaylist']+'|;BYMONTH='+vCalendar.re['bymolist']+'|;WKST='+vCalendar.re['weekday']+')*$';
 
 vCalendar.re['contentline_SUMMARY']='(?:'+vCalendar.re['group']+'\\.)?SUMMARY(?:;'+vCalendar.re['text-param']+')*:'+vCalendar.re['text-value']+vCalendar.re['CRLF'];
 vCalendar.pre['contentline_SUMMARY']=RegExp('\r\n'+vCalendar.re['contentline_SUMMARY'],'mi');

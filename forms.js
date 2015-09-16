@@ -225,7 +225,7 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 		$('#repeatTodo').val(true);
 		$('#CATodo').show();
 		$('#repeatConfirmBoxTODO').css('visibility', 'visible');
-		if(todo.repeatCount!='' && todo.repeatCount == 1)
+		if(todo.repeatCount!='' && todo.repeatCount == 1 || globalSettings.appleremindersmode.value)
 		{
 			$('#editFutureTODO').css('display','none');
 			if($('#editFutureTODO').next('br').length>0)
@@ -595,7 +595,7 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 
 		if(alarmIterator>0)
 			todo_alert_add(alarmIterator);
-		if(todo.type!='' && repeatOne!='editOnly')
+		if(todo.type!='' && repeatOne!='editOnly' && todo.ruleString.match(vCalendar.re['recurCaldav'])!=null)
 		{
 			var ruleString=todo.vcalendar.match(vCalendar.pre['contentline_RRULE2'])[0].match(vCalendar.pre['contentline_parse'])[4];
 			if(ruleString.indexOf('BYMONTH=')!=-1 || ruleString.indexOf('BYMONTHDAY=')!=-1 || ruleString.indexOf('BYDAY=')!=-1)
@@ -859,6 +859,12 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 				$('#repeatTodo').val(true);
 			}
 		}
+		else if(todo.type!='' && repeatOne!='editOnly')
+		{
+			var cu_opt = new Option(localization[globalInterfaceLanguage].customRepeat, todo.ruleString, false, true);
+			cu_opt.attr('data-type','custom_repeat');
+			$('#repeat_TODO').append(cu_opt);
+		}
 		else
 			$('#repeatTodo').val(false);
 
@@ -926,7 +932,7 @@ function showTodoForm(todo, mod, repeatOne, confirmRepeat)
 		$('#repeat_row_TODO').hide();
 	}
 
-	if($('#repeat_TODO option:selected').attr('data-type')!="repeat_no-repeat")
+	if($('#repeat_TODO option:selected').attr('data-type')!="repeat_no-repeat" && $('#repeat_TODO option:selected').attr('data-type')!="custom_repeat")
 		$('#repeat_details_TODO').show();
 
 	if($('#repeat_end_details_TODO option:selected').attr('data-type')=="repeat_details_on_date")
@@ -1331,7 +1337,7 @@ function bindTodoForm()
 	});
 
 	$('#repeat_TODO').change(function(){
-		if($('#repeat_TODO option:selected').attr('data-type')=='repeat_no-repeat')
+		if($('#repeat_TODO option:selected').attr('data-type')=='repeat_no-repeat' || $('#repeat_TODO option:selected').attr('data-type')=="custom_repeat")
 		{
 			$('#repeat_details_TODO').hide();
 			$('#repeat_interval_TODO').hide();
@@ -1883,12 +1889,12 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 		if(alarmIterator>0)
 			event_alert_add(alarmIterator+2);
 
-		if(calEvent.type!='' && repeatOne!='editOnly')
+		if(calEvent.type!='' && repeatOne!='editOnly' && calEvent.ruleString.match(vCalendar.re['recurCaldav'])!=null)
 		{
 			var ruleString=calEvent.vcalendar.match(vCalendar.pre['contentline_RRULE2'])[0].match(vCalendar.pre['contentline_parse'])[4];
 			if(ruleString.indexOf('BYMONTH=')!=-1 || ruleString.indexOf('BYMONTHDAY=')!=-1 || ruleString.indexOf('BYDAY=')!=-1)
 			{
-				pars=ruleString.split(';');
+				var pars=ruleString.split(';');
 
 				if(pars.indexElementOf('BYMONTH=')!=-1 && pars.indexElementOf('BYMONTHDAY=')==-1 && pars.indexElementOf('BYDAY=')==-1)
 					pars[pars.length] = "BYMONTHDAY="+calEvent.start.getDate();
@@ -2163,6 +2169,12 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 			$('#repeatEvent').val(true);
 			}
 		}
+		else if(calEvent.type!='' && repeatOne!='editOnly')
+		{
+			var cu_opt = new Option(localization[globalInterfaceLanguage].customRepeat, calEvent.ruleString, false, true);
+			$(cu_opt).attr('data-type','custom_repeat');
+			$('#repeat').append(cu_opt);
+		}
 		else
 			$('#repeatEvent').val(false);
 
@@ -2190,7 +2202,7 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 		if($('#show').val())
 		{
 			if(calEvent.repeatStart && repeatOne=='')
-				date=calEvent.repeatStart;
+				date=new Date(calEvent.repeatStart.getTime());
 			if(calEvent.repeatEnd && repeatOne=='')
 				date_to=new Date(calEvent.repeatEnd.getTime());
 
@@ -2280,7 +2292,7 @@ function showEventForm(date, allDay, calEvent, jsEvent, mod, repeatOne, confirmR
 	$('#date_to').val($.datepicker.formatDate(globalSettings.datepickerformat.value, date_to));
 	$('#time_to').val($.fullCalendar.formatDate(date_to, (globalSettings.ampmformat.value ? 'hh:mm TT' : 'HH:mm')));
 
-	if($('#repeat option:selected').attr('data-type')!="repeat_no-repeat")
+	if($('#repeat option:selected').attr('data-type')!="repeat_no-repeat" && $('#repeat option:selected').attr('data-type')!="custom_repeat")
 		$('#repeat_details').show();
 
 	if($('#repeat_end_details option:selected').attr('data-type')=="repeat_details_on_date")
@@ -2704,7 +2716,7 @@ function bindEventForm()
 	});
 
 	$('#repeat').change(function(){
-		if($('#repeat option:selected').attr('data-type')=='repeat_no-repeat')
+		if($('#repeat option:selected').attr('data-type')=='repeat_no-repeat' || $('#repeat option:selected').attr('data-type')=="custom_repeat")
 		{
 			$('#repeat_details').hide();
 			$('#repeat_interval').hide();
