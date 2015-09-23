@@ -4222,7 +4222,11 @@ function putVcardToCollection(inputContactObjArr, inputFilterUID, recursiveMode,
 
 				var rawVcard=inputContactObj.vcard;
 				if(xml.getResponseHeader('Preference-Applied')=='return=representation' && xml.responseText)
-					rawVcard=xml.responseText;
+					rawVcard=additionalRFCFixes(basicRFCFixesAndCleanup(xml.responseText));	// we cannot expect RFC compliant result here
+				else
+					// remove line folding (added before the PUT operation)
+					// by default it is a part of basicRFCFixesAndCleanup but we don't need cleanup here!
+					rawVcard=rawVcard.replace(vCard.pre['basicRFCFixesAndCleanup_rnwsp-gm'], '');
 
 				var vcard=normalizeVcard(rawVcard);
 				var categories='';
