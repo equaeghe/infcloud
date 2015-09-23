@@ -74,16 +74,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 	<div id="LoginPage" style="opacity: 1; display:none">
 		<div class="window">
 			<div id="Login">
-				<form onsubmit="return false;">
+				<form onsubmit="event.preventDefault(); login();">
 					<table>
 						<tr>
 							<td data-size="login_logo"><img data-type="system_logo" src="" alt="Logo" /></td>
 						</tr>
 						<tr>
-							<td data-size="login_input"><input data-type="system_username" type="text" class="fs" autocomplete="off" placeholder="Login" /></td>
+							<td data-size="login_input"><input data-type="system_username" type="text" name="username" class="fs" placeholder="Login" /></td>
 						</tr>
 						<tr>
-							<td data-size="login_input"><input data-type="system_password" type="password" class="fs" autocomplete="off" placeholder="Password" /></td>
+							<td data-size="login_input"><input data-type="system_password" type="password" name="password" class="fs" placeholder="Password" /></td>
 						</tr>
 						<tr>
 							<td data-size="login">
@@ -93,10 +93,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 							</td>
 						</tr>
 						<tr>
-							<td><img data-type="system_login" alt="login" title="login" src="images/login.svg" onclick="if(event.shiftKey)ignoreServerSettings=true;login();" /></td>
+							<td><img data-type="system_login" alt="login" title="login" src="images/login.svg" onclick="if(event.shiftKey) ignoreServerSettings=true; $(this).closest('form').find('[type=\'submit\']').click();" /></td>
 						</tr>
 						<tr style="display:none">
-							<td><input type="submit"></td>
+							<td><input type="submit" /></td>
 						</tr>
 					</table>
 				</form>

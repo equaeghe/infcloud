@@ -3,6 +3,10 @@ CalDavZAP Changelog
 
 NOTE: if you are interested in integrated version of CalDavZAP and CardDavMATE (our CardDAV web client) please use InfCloud - http://www.inf-it.com/open-source/clients/infcloud/
 
+version 0.13.1 [2015-09-22]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- changed login screen autocomplete behaviour - we do not prevent browsers from remembering login/password anymore
+
 version 0.13.0 [2015-09-16]:
 - note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
 - note: if you use a server with cross-domain setup see the modified Access-Control-Allow-Headers and Access-Control-Expose-Headers in readme.txt (or misc/config_davical.txt or misc/calendarserver.diff); you MUST update these headers, otherwise the client will NOT work
