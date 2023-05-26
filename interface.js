@@ -5851,6 +5851,7 @@ function CardDAVeditor_cleanup(inputLoadEmpty, inputIsCompany)
 			// remove the template related to previous image (start with clean one)
 			vCard.tplM['contentline_PHOTO'][0]=null;
 
+			$('#photoDataHidden').val('');
 			$('#photoURLHidden').val($('#photoURL').val());
 
 			loadImage(this);
@@ -6320,7 +6321,7 @@ function process_image(event)
 		break; // we handle only the first picture here ...
 	}
 
-	$('#photoURL, #photoURLHidden').val('');
+	$('#photoURL, #photoURLHidden', '#photoDataHidden').val('');
 }
 /* END image manipulation */
 

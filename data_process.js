@@ -4733,30 +4733,38 @@ function dataToVcard(accountUID, inputUID, inputFilterUID, inputEtag)
 // PHOTO
 	if(globalDisabledContactAttributes.indexOf('PHOTO')==-1 && !tmpvCardEditorRef.find('#photo').hasClass('photo_blank'))
 	{
-		var value = $('#photoURLHidden').val() || tmpvCardEditorRef.find('#photo').get(0).toDataURL('image/png');
-		if(vCard.tplM['contentline_PHOTO']!=null && (process_elem=vCard.tplM['contentline_PHOTO'][0])!=undefined)
+		// keep original vCard content with out re-encoding the image
+		if ($('#photoDataHidden').val() !== '')
 		{
-			// replace the object and related objects' group names (+ append the related objects after the processed)
-			parsed=('\r\n'+process_elem).match(RegExp('\r\n((?:'+vCard.re['group']+'\\.)?)','m'));
-			if(parsed[1]!='')	// if group is present, replace the object and related objects' group names
-				process_elem=('\r\n'+process_elem).replace(RegExp('\r\n'+parsed[1].replace('.','\\.'),'mg'),'\r\nitem'+(groupCounter++)+'.').substring(2);
-
-			process_elem=process_elem.replace('##:::##value##:::##',value);
+			process_elem = $('#photoDataHidden').val();
 		}
 		else
 		{
-			process_elem=vCard.tplC['contentline_PHOTO'];
-			process_elem=process_elem.replace('##:::##group_wd##:::##', '');
-			process_elem=process_elem.replace('##:::##value##:::##', value);
-		}
-
-		// Data URL (non-remote) will always be a binary encoded png image
-		if($('#photoURLHidden').val()==='') {
-			process_elem=process_elem.replace('##:::##params_wsc##:::##', ';ENCODING=b;TYPE=png');
-		}
-		// For remote URL, we can't reliably determine its type, so we just append the VALUE=URI param
-		else {
-			process_elem=process_elem.replace('##:::##params_wsc##:::##', ';VALUE=URI');
+			var value = $('#photoURLHidden').val() || tmpvCardEditorRef.find('#photo').get(0).toDataURL('image/png');
+			if(vCard.tplM['contentline_PHOTO']!=null && (process_elem=vCard.tplM['contentline_PHOTO'][0])!=undefined)
+			{
+				// replace the object and related objects' group names (+ append the related objects after the processed)
+				parsed=('\r\n'+process_elem).match(RegExp('\r\n((?:'+vCard.re['group']+'\\.)?)','m'));
+				if(parsed[1]!='')	// if group is present, replace the object and related objects' group names
+					process_elem=('\r\n'+process_elem).replace(RegExp('\r\n'+parsed[1].replace('.','\\.'),'mg'),'\r\nitem'+(groupCounter++)+'.').substring(2);
+	
+				process_elem=process_elem.replace('##:::##value##:::##',value);
+			}
+			else
+			{
+				process_elem=vCard.tplC['contentline_PHOTO'];
+				process_elem=process_elem.replace('##:::##group_wd##:::##', '');
+				process_elem=process_elem.replace('##:::##value##:::##', value);
+			}
+	
+			// Data URL (non-remote) will always be a binary encoded png image
+			if($('#photoURLHidden').val()==='') {
+				process_elem=process_elem.replace('##:::##params_wsc##:::##', ';ENCODING=b;TYPE=png');
+			}
+			// For remote URL, we can't reliably determine its type, so we just append the VALUE=URI param
+			else {
+				process_elem=process_elem.replace('##:::##params_wsc##:::##', ';VALUE=URI');
+			}
 		}
 
 		vCardText+=process_elem;
@@ -6323,11 +6331,16 @@ function vcardToData(inputContact, inputIsReadonly, inputIsCompany, inputEditorM
 		if(photo_show_org)
 			tmpvCardEditorRef.find('#photo').toggleClass('photo_user photo_company');
 
+		tmpvCardEditorRef.find('#photoDataHidden').val('');
+
 		if(globalDisabledContactAttributes.indexOf('PHOTO')==-1)
 		{
 			vcard_element=vcard.match(vCard.pre['contentline_PHOTO']);
 			if(vcard_element!=null)	// if the PHOTO attribute is present more than once, we use the first value
 			{
+				// store original data to prevent re-encoding image
+				tmpvCardEditorRef.find('#photoDataHidden').val(vcard_element);
+
 				// parsed (contentline_parse) = [1]->"group.", [2]->"name", [3]->";param;param", [4]->"value"
 				parsed=vcard_element[0].match(vCard.pre['contentline_parse']);
 
